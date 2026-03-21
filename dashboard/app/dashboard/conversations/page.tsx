@@ -45,7 +45,7 @@ export default function ConversationsPage() {
   const [filter, setFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
   const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
     getShops().then(({ shops }) => {

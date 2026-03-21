@@ -19,6 +19,9 @@ const conversationRoutes = require('./src/routes/conversations');
 const orderRoutes = require('./src/routes/orders');
 const { bookingsRouter: bookingRoutes } = require('./src/routes/orders');
 const billingRoutes = require('./src/routes/billing');
+const paymentRoutes = require('./src/routes/payments');
+const referralRoutes = require('./src/routes/referral');
+const publicRoutes = require('./src/routes/public');
 const { scheduleDigests } = require('./src/services/digestService');
 
 const app = express();
@@ -64,6 +67,9 @@ app.use('/conversations', apiLimiter, conversationRoutes);
 app.use('/orders', apiLimiter, orderRoutes);
 app.use('/bookings', apiLimiter, bookingRoutes);
 app.use('/billing', apiLimiter, billingRoutes);
+app.use('/payments', paymentRoutes);
+app.use('/referral', apiLimiter, referralRoutes);
+app.use('/public', publicRoutes);
 
 app.use(errorHandler);
 
@@ -78,6 +84,14 @@ const server = app.listen(PORT, () => {
 
   scheduleDigests();
   console.log('[App] Daily digest scheduled for 07:50 IST');
+
+  const { scheduleProactiveMessages } = require('./src/services/proactiveService');
+  scheduleProactiveMessages();
+  console.log('[App] Proactive messages scheduled (9am morning, 5pm evening, Monday re-engagement)');
+
+  const { scheduleAbandonedOrderChecks } = require('./src/services/abandonedOrderService');
+  scheduleAbandonedOrderChecks();
+  console.log('[App] Abandoned order recovery: every 30 minutes');
 });
 
 process.on('SIGTERM', () => {

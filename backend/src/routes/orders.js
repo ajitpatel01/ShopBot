@@ -15,6 +15,13 @@ const {
   updateBookingStatus,
 } = require('../services/orderService');
 const { supabaseService } = require('../services/supabase');
+const {
+  notifyCustomerOrderConfirmed,
+  notifyCustomerOrderCancelled,
+  notifyCustomerOrderCompleted,
+  notifyCustomerBookingConfirmed,
+  notifyCustomerBookingCancelled,
+} = require('../services/notificationService');
 
 ordersRouter.use(authenticateUser);
 bookingsRouter.use(authenticateUser);
@@ -93,6 +100,27 @@ ordersRouter.patch('/:id/status', async (req, res, next) => {
 
     const order = await updateOrderStatus(req.params.id, shop.id, status);
     res.json({ order });
+
+    const { data: fullOrder } = await supabaseService
+      .from('orders')
+      .select('*, conversations(customer_phone, customer_name)')
+      .eq('id', req.params.id)
+      .eq('shop_id', shop.id)
+      .single();
+
+    if (fullOrder && fullOrder.conversations && fullOrder.conversations.customer_phone) {
+      const phone = fullOrder.conversations.customer_phone;
+      if (status === 'confirmed') {
+        notifyCustomerOrderConfirmed(phone, fullOrder, shop)
+          .catch(err => console.error('[Orders] Customer notify failed:', err.message));
+      } else if (status === 'cancelled') {
+        notifyCustomerOrderCancelled(phone, fullOrder, shop)
+          .catch(err => console.error('[Orders] Customer notify failed:', err.message));
+      } else if (status === 'completed') {
+        notifyCustomerOrderCompleted(phone, fullOrder, shop)
+          .catch(err => console.error('[Orders] Customer notify failed:', err.message));
+      }
+    }
   } catch (err) {
     if (err.message.includes('Invalid status transition') || err.message.includes('not found')) {
       return res.status(400).json({ error: err.message });
@@ -157,6 +185,24 @@ bookingsRouter.patch('/:id/status', async (req, res, next) => {
 
     const booking = await updateBookingStatus(req.params.id, shop.id, status);
     res.json({ booking });
+
+    const { data: fullBooking } = await supabaseService
+      .from('bookings')
+      .select('*, conversations(customer_phone, customer_name)')
+      .eq('id', req.params.id)
+      .eq('shop_id', shop.id)
+      .single();
+
+    if (fullBooking && fullBooking.conversations && fullBooking.conversations.customer_phone) {
+      const phone = fullBooking.conversations.customer_phone;
+      if (status === 'confirmed') {
+        notifyCustomerBookingConfirmed(phone, fullBooking, shop)
+          .catch(err => console.error('[Bookings] Customer notify failed:', err.message));
+      } else if (status === 'cancelled') {
+        notifyCustomerBookingCancelled(phone, fullBooking, shop)
+          .catch(err => console.error('[Bookings] Customer notify failed:', err.message));
+      }
+    }
   } catch (err) {
     if (err.message.includes('Invalid status transition') || err.message.includes('not found')) {
       return res.status(400).json({ error: err.message });

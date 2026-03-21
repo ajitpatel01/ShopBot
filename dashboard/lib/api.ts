@@ -128,6 +128,8 @@ export interface Conversation {
   created_at: string
   latest_message?: string
   needs_owner_reply?: boolean
+  resolved?: boolean
+  owner_note?: string
 }
 
 export interface Message {
@@ -177,4 +179,148 @@ export interface Stats {
   inboundMessages: number
   intentBreakdown: Record<string, number>
   escalations: number
+}
+
+export interface RevenueDay {
+  date: string
+  revenue: number
+  order_count: number
+}
+
+export interface PeakHourEntry {
+  day_of_week: number
+  hour: number
+  message_count: number
+}
+
+export interface TopItem {
+  name: string
+  quantity: number
+  revenue: number
+}
+
+export interface CustomerStats {
+  newCustomers: number
+  returningCustomers: number
+  totalCustomers: number
+  retentionRate: number
+}
+
+export interface CustomerProfile {
+  conversation: Conversation
+  orders: Order[]
+  bookings: Booking[]
+  messageStats: { total: number; first_message: string | null; last_message: string | null }
+  totalSpend: number
+}
+
+export function deleteConversation(conversationId: string, shopId: string) {
+  return apiRequest<{ success: boolean; deleted: string }>(
+    "/conversations/" + conversationId + "?shop_id=" + shopId,
+    { method: "DELETE" }
+  )
+}
+
+export function resolveConversation(conversationId: string, shopId: string, resolved: boolean) {
+  return apiRequest<{ conversation: Conversation }>(
+    "/conversations/" + conversationId + "/resolve?shop_id=" + shopId,
+    { method: "PATCH", body: JSON.stringify({ resolved }) }
+  )
+}
+
+export function addConversationNote(conversationId: string, shopId: string, note: string) {
+  return apiRequest<{ conversation: Conversation }>(
+    "/conversations/" + conversationId + "/note?shop_id=" + shopId,
+    { method: "PATCH", body: JSON.stringify({ note }) }
+  )
+}
+
+export function broadcastMessage(shopId: string, message: string, type: string) {
+  return apiRequest<{ sent: number; failed: number }>(
+    "/shops/" + shopId + "/broadcast",
+    { method: "POST", body: JSON.stringify({ message, type }) }
+  )
+}
+
+export function getRevenueStats(shopId: string, from: string, to: string) {
+  return apiRequest<{ revenueByDay: RevenueDay[] }>(
+    "/conversations/stats/revenue?shop_id=" + shopId + "&from=" + from + "&to=" + to
+  )
+}
+
+export function getPeakHoursStats(shopId: string) {
+  return apiRequest<{ peakHours: PeakHourEntry[] }>(
+    "/conversations/stats/peak-hours?shop_id=" + shopId
+  )
+}
+
+export function getTopItemsStats(shopId: string) {
+  return apiRequest<{ topItems: TopItem[] }>(
+    "/conversations/stats/top-items?shop_id=" + shopId
+  )
+}
+
+export function getCustomerStats(shopId: string, from?: string) {
+  const query = "/conversations/stats/customers?shop_id=" + shopId + (from ? "&from=" + from : "")
+  return apiRequest<CustomerStats>(query)
+}
+
+export function getCustomerProfile(conversationId: string, shopId: string) {
+  return apiRequest<CustomerProfile>(
+    "/conversations/" + conversationId + "/customer-profile?shop_id=" + shopId
+  )
+}
+
+// ── Referral ──
+
+export interface ReferralStats {
+  code: string | null
+  referralUrl: string | null
+  totalReferrals: number
+  pendingReferrals: number
+  monthsEarned: number
+  nextRewardAt: number
+  redemptions?: Array<{
+    id: string
+    referrer_rewarded: boolean
+    created_at: string
+    rewarded_at: string | null
+  }>
+}
+
+export function getReferralCode() {
+  return apiRequest<{ code: string; referralUrl: string; stats: ReferralStats }>("/referral/my-code")
+}
+
+export function getReferralStats(shopId: string) {
+  return apiRequest<ReferralStats>("/referral/stats?shop_id=" + shopId)
+}
+
+export function redeemReferralCode(code: string, shopId: string) {
+  return apiRequest<{ success: boolean; extraDays: number; newTrialEndsAt: string }>("/referral/redeem", {
+    method: "POST",
+    body: JSON.stringify({ code, shopId }),
+  })
+}
+
+// ── Public Shop ──
+
+export interface PublicShop {
+  id: string
+  name: string
+  type: string
+  menu: MenuItem[]
+  hours: Record<string, { open: boolean; start?: string; end?: string }>
+  faqs: FAQ[]
+  bot_tone: string
+  whatsapp_number: string
+  is_active: boolean
+  slug: string
+}
+
+export function getPublicShop(slug: string) {
+  return fetch(BASE_URL + "/public/shop/" + slug).then((res) => {
+    if (!res.ok) throw new Error("Shop not found")
+    return res.json() as Promise<PublicShop>
+  })
 }

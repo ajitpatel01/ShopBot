@@ -99,4 +99,129 @@ async function notifyOwnerEscalation(shop, messageContent, customerPhone, custom
   }
 }
 
-module.exports = { notifyOwnerOrder, notifyOwnerBooking, notifyOwnerEscalation };
+// ── Customer-facing notifications ──
+
+async function notifyCustomerOrderConfirmed(customerPhone, order, shop) {
+  try {
+    const itemLines = Array.isArray(order.items)
+      ? order.items.map(i => '• ' + i.quantity + 'x ' + i.name).join('\n')
+      : '';
+
+    const message =
+      '✅ *Order Confirmed!*\n\n' +
+      'Hi! Your order at *' + shop.name + '* has been confirmed 🎉\n\n' +
+      itemLines + '\n\n' +
+      '*Total: ₹' + order.total + '*\n\n' +
+      'We\'ll have it ready soon. Thank you for ordering with us! 🙏';
+
+    await sendMessage(customerPhone, message);
+    console.log('[Notify] Order confirmed sent to customer ' + customerPhone);
+  } catch (err) {
+    console.error('[Notify] notifyCustomerOrderConfirmed error:', err.message);
+  }
+}
+
+async function notifyCustomerOrderCancelled(customerPhone, order, shop) {
+  try {
+    const message =
+      '❌ *Order Update*\n\n' +
+      'Hi! Unfortunately your order at *' + shop.name + '* has been cancelled.\n\n' +
+      'We\'re sorry for the inconvenience 🙏 Please feel free to place a new order or contact us directly.\n\n' +
+      '— ' + shop.name + ' Team';
+
+    await sendMessage(customerPhone, message);
+    console.log('[Notify] Order cancelled sent to customer ' + customerPhone);
+  } catch (err) {
+    console.error('[Notify] notifyCustomerOrderCancelled error:', err.message);
+  }
+}
+
+async function notifyCustomerOrderCompleted(customerPhone, order, shop) {
+  try {
+    const itemLines = Array.isArray(order.items)
+      ? order.items.map(i => '• ' + i.quantity + 'x ' + i.name).join('\n')
+      : '';
+
+    const message =
+      '🎉 *Order Ready!*\n\n' +
+      'Your order at *' + shop.name + '* is ready!\n\n' +
+      itemLines + '\n\n' +
+      'Thank you for choosing us 😊 We hope to see you again soon!\n\n' +
+      '— ' + shop.name;
+
+    await sendMessage(customerPhone, message);
+    console.log('[Notify] Order completed sent to customer ' + customerPhone);
+
+    setTimeout(async () => {
+      try {
+        const reviewMsg =
+          '⭐ How was your experience?\n\n' +
+          'Reply with a number:\n' +
+          '5 - Excellent 🌟\n' +
+          '4 - Good 😊\n' +
+          '3 - Average 😐\n' +
+          '2 - Poor 😕\n' +
+          '1 - Very Poor 😞\n\n' +
+          'Your feedback helps us improve! 🙏';
+        await sendMessage(customerPhone, reviewMsg);
+        console.log('[Notify] Review request sent to customer ' + customerPhone);
+      } catch (err) {
+        console.error('[Notify] Review request error:', err.message);
+      }
+    }, 2000);
+  } catch (err) {
+    console.error('[Notify] notifyCustomerOrderCompleted error:', err.message);
+  }
+}
+
+async function notifyCustomerBookingConfirmed(customerPhone, booking, shop) {
+  try {
+    const rawName = booking.customer_name || '';
+    const customerName = rawName.includes(' | REF:') ? rawName.split(' | REF:')[0] : rawName;
+    const formattedDatetime = formatISTDatetime(booking.booking_datetime);
+    const parts = formattedDatetime.split(', ');
+    const formattedDate = parts[0] || formattedDatetime;
+    const formattedTime = parts[1] || '';
+
+    const message =
+      '✅ *Booking Confirmed!*\n\n' +
+      'Hi' + (customerName ? ' ' + customerName : '') + '! Your booking at *' + shop.name + '* is confirmed 🎉\n\n' +
+      '📋 Service: ' + (booking.service || 'As discussed') + '\n' +
+      '📅 Date: ' + formattedDate + '\n' +
+      '🕐 Time: ' + formattedTime + '\n\n' +
+      'Please arrive 5 minutes early 😊\n\n' +
+      'Need to reschedule? Just message us!\n' +
+      '— ' + shop.name;
+
+    await sendMessage(customerPhone, message);
+    console.log('[Notify] Booking confirmed sent to customer ' + customerPhone);
+  } catch (err) {
+    console.error('[Notify] notifyCustomerBookingConfirmed error:', err.message);
+  }
+}
+
+async function notifyCustomerBookingCancelled(customerPhone, booking, shop) {
+  try {
+    const message =
+      '❌ *Booking Update*\n\n' +
+      'Hi! Unfortunately your booking at *' + shop.name + '* has been cancelled.\n\n' +
+      'We\'re sorry for the inconvenience 🙏 Feel free to rebook anytime — just send us a message!\n\n' +
+      '— ' + shop.name + ' Team';
+
+    await sendMessage(customerPhone, message);
+    console.log('[Notify] Booking cancelled sent to customer ' + customerPhone);
+  } catch (err) {
+    console.error('[Notify] notifyCustomerBookingCancelled error:', err.message);
+  }
+}
+
+module.exports = {
+  notifyOwnerOrder,
+  notifyOwnerBooking,
+  notifyOwnerEscalation,
+  notifyCustomerOrderConfirmed,
+  notifyCustomerOrderCancelled,
+  notifyCustomerOrderCompleted,
+  notifyCustomerBookingConfirmed,
+  notifyCustomerBookingCancelled,
+};

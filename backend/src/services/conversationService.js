@@ -106,12 +106,26 @@ async function getConversationsByShop(shopId, options = {}) {
   const limit = options.limit || 20;
   const offset = options.offset || 0;
 
-  const { data, error } = await supabaseService
+  let query = supabaseService
     .from('conversations')
     .select('*')
-    .eq('shop_id', shopId)
+    .eq('shop_id', shopId);
+
+  if (options.resolved !== undefined) {
+    query = query.eq('resolved', options.resolved);
+  }
+
+  if (options.search) {
+    query = query.or(
+      `customer_phone.ilike.%${options.search}%,customer_name.ilike.%${options.search}%`
+    );
+  }
+
+  query = query
     .order('last_message_at', { ascending: false, nullsFirst: false })
     .range(offset, offset + limit - 1);
+
+  const { data, error } = await query;
 
   if (error || !data) return [];
 

@@ -1,25 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { motion } from "framer-motion"
 import { getShops, updateShop, type Shop, type MenuItem, type FAQ } from "@/lib/api"
 import { LoadingSpinner } from "@/components/LoadingSpinner"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+const TABS = ["basic", "menu", "hours", "faqs"] as const
 
 type HoursMap = Record<string, { open: boolean; start: string; end: string }>
 
@@ -33,20 +23,14 @@ export default function SettingsPage() {
   const [shop, setShop] = useState<Shop | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState<typeof TABS[number]>("basic")
 
-  // Basic info state
   const [name, setName] = useState("")
   const [type, setType] = useState("other")
   const [ownerWhatsapp, setOwnerWhatsapp] = useState("")
   const [botTone, setBotTone] = useState("friendly")
-
-  // Menu state
   const [menu, setMenu] = useState<MenuItem[]>([])
-
-  // Hours state
   const [hours, setHours] = useState<HoursMap>(defaultHours())
-
-  // FAQ state
   const [faqs, setFaqs] = useState<FAQ[]>([])
 
   useEffect(() => {
@@ -82,296 +66,334 @@ export default function SettingsPage() {
   }
 
   if (loading) return <LoadingSpinner />
-  if (!shop) return <p className="text-center text-muted-foreground">No shop found</p>
+  if (!shop) return <p className="text-center text-[#555]">No shop found</p>
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Settings</h1>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-6"
+    >
+      <h1 className="text-2xl font-bold tracking-tight text-white">Settings</h1>
 
-      <Tabs defaultValue="basic" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="basic">Basic Info</TabsTrigger>
-          <TabsTrigger value="menu">Menu / Services</TabsTrigger>
-          <TabsTrigger value="hours">Business Hours</TabsTrigger>
-          <TabsTrigger value="faqs">FAQs</TabsTrigger>
-        </TabsList>
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-[#1f1f1f]">
+        {(["basic", "menu", "hours", "faqs"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              "border-b-2 px-4 py-2.5 text-sm font-medium capitalize transition-colors duration-150",
+              activeTab === tab
+                ? "border-white text-white"
+                : "border-transparent text-[#555] hover:text-[#aaa]"
+            )}
+          >
+            {tab === "basic" ? "Basic Info" : tab === "menu" ? "Menu / Services" : tab === "hours" ? "Business Hours" : "FAQs"}
+          </button>
+        ))}
+      </div>
 
-        {/* ── Tab 1: Basic Info ────────────────────────── */}
-        <TabsContent value="basic">
-          <Card>
-            <CardHeader><CardTitle>Basic Information</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Shop Name</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Shop Type</Label>
-                <Select value={type} onValueChange={setType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="restaurant">Restaurant</SelectItem>
-                    <SelectItem value="salon">Salon</SelectItem>
-                    <SelectItem value="pharmacy">Pharmacy</SelectItem>
-                    <SelectItem value="grocery">Grocery</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>WhatsApp Number</Label>
-                <Input value={shop.whatsapp_number} disabled className="bg-muted" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="owner_wa">Owner WhatsApp</Label>
-                <Input
-                  id="owner_wa"
-                  value={ownerWhatsapp}
-                  onChange={(e) => setOwnerWhatsapp(e.target.value)}
-                  placeholder="+91XXXXXXXXXX"
+      {/* Basic Info */}
+      {activeTab === "basic" && (
+        <div className="rounded-xl border border-[#1f1f1f] bg-[#0a0a0a] p-6">
+          <div className="space-y-5">
+            <div>
+              <label className="mb-1.5 block text-xs text-[#666]">Shop Name</label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-10 w-full rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] px-3 text-sm text-white placeholder-[#444] transition-colors focus:border-[#333] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs text-[#666]">Shop Type</label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                className="h-10 w-full rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] px-3 text-sm text-white focus:border-[#333] focus:outline-none"
+              >
+                <option value="restaurant">Restaurant</option>
+                <option value="salon">Salon</option>
+                <option value="pharmacy">Pharmacy</option>
+                <option value="grocery">Grocery</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs text-[#666]">WhatsApp Number</label>
+              <input
+                value={shop.whatsapp_number}
+                disabled
+                className="h-10 w-full cursor-not-allowed rounded-lg border border-[#1f1f1f] bg-[#050505] px-3 text-sm text-[#555]"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs text-[#666]">Your Public Page</label>
+              <div className="flex items-center gap-2">
+                <input
+                  value={"shopbot.in/shop/" + name.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, "-")}
+                  disabled
+                  className="h-10 flex-1 cursor-not-allowed rounded-lg border border-[#1f1f1f] bg-[#050505] px-3 text-sm text-[#555]"
                 />
+                <button
+                  onClick={() => {
+                    const slug = name.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, "-")
+                    window.open("/shop/" + slug, "_blank")
+                  }}
+                  className="h-10 rounded-lg border border-[#1f1f1f] bg-[#111] px-3 text-xs font-medium text-[#a0a0a0] transition-colors hover:border-[#2a2a2a] hover:text-white"
+                >
+                  Open
+                </button>
+                <button
+                  onClick={() => {
+                    const slug = name.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, "-")
+                    navigator.clipboard.writeText("https://shopbot.in/shop/" + slug)
+                    toast.success("Public page link copied!")
+                  }}
+                  className="h-10 rounded-lg border border-[#1f1f1f] bg-[#111] px-3 text-xs font-medium text-[#a0a0a0] transition-colors hover:border-[#2a2a2a] hover:text-white"
+                >
+                  Copy
+                </button>
+                <button
+                  onClick={() => {
+                    const slug = name.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, "-")
+                    const msg = encodeURIComponent("Check out our shop page: https://shopbot.in/shop/" + slug)
+                    window.open("https://wa.me/?text=" + msg, "_blank")
+                  }}
+                  className="h-10 rounded-lg bg-[#25D366] px-3 text-xs font-medium text-white transition-colors hover:bg-[#20bd5a]"
+                >
+                  Share
+                </button>
               </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs text-[#666]">Owner WhatsApp</label>
+              <input
+                value={ownerWhatsapp}
+                onChange={(e) => setOwnerWhatsapp(e.target.value)}
+                placeholder="+91XXXXXXXXXX"
+                className="h-10 w-full rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] px-3 text-sm text-white placeholder-[#444] transition-colors focus:border-[#333] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs text-[#666]">Bot Tone</label>
               <div className="space-y-2">
-                <Label>Bot Tone</Label>
-                <div className="space-y-2">
-                  {(["formal", "friendly", "casual"] as const).map((tone) => (
-                    <label key={tone} className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-accent">
-                      <input
-                        type="radio"
-                        name="tone"
-                        value={tone}
-                        checked={botTone === tone}
-                        onChange={() => setBotTone(tone)}
-                        className="accent-primary"
-                      />
-                      <div>
-                        <p className="text-sm font-medium capitalize">{tone}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {tone === "formal" && "Professional, polite language"}
-                          {tone === "friendly" && "Warm and approachable"}
-                          {tone === "casual" && "Relaxed, conversational style"}
-                        </p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
+                {(["formal", "friendly", "casual"] as const).map((tone) => (
+                  <label
+                    key={tone}
+                    className="flex cursor-pointer items-center gap-3 rounded-lg border border-[#1f1f1f] p-3 transition-colors hover:border-[#2a2a2a]"
+                  >
+                    <input
+                      type="radio"
+                      name="tone"
+                      value={tone}
+                      checked={botTone === tone}
+                      onChange={() => setBotTone(tone)}
+                      className="accent-white"
+                    />
+                    <div>
+                      <p className="text-sm font-medium capitalize text-white">{tone}</p>
+                      <p className="text-xs text-[#555]">
+                        {tone === "formal" && "Professional, polite language"}
+                        {tone === "friendly" && "Warm and approachable"}
+                        {tone === "casual" && "Relaxed, conversational style"}
+                      </p>
+                    </div>
+                  </label>
+                ))}
               </div>
-              <Button
-                onClick={() => saveField({ name, type, owner_whatsapp: ownerWhatsapp, bot_tone: botTone })}
+            </div>
+            <div className="border-t border-[#1f1f1f] pt-5">
+              <button
+                onClick={() => saveField({ name, type, owner_whatsapp: ownerWhatsapp, bot_tone: botTone as "formal" | "friendly" | "casual" })}
                 disabled={saving}
+                className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition-colors duration-150 hover:bg-[#f0f0f0] disabled:opacity-50"
               >
                 {saving ? "Saving..." : "Save Changes"}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-        {/* ── Tab 2: Menu / Services ───────────────────── */}
-        <TabsContent value="menu">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Menu / Services</CardTitle>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  setMenu([...menu, { name: "", price: 0, category: "", description: "" }])
-                }
-              >
-                <Plus className="mr-1 h-4 w-4" /> Add Item
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {menu.length === 0 && (
-                <p className="text-sm text-muted-foreground">No items yet. Add your first menu item.</p>
-              )}
-              {menu.map((item, i) => (
-                <div key={i} className="grid grid-cols-[1fr_80px_1fr_1fr_auto] gap-2 items-end">
-                  <div>
-                    <Label className="text-xs">Name</Label>
-                    <Input
-                      value={item.name}
-                      onChange={(e) => {
-                        const copy = [...menu]
-                        copy[i] = { ...copy[i], name: e.target.value }
-                        setMenu(copy)
-                      }}
-                      placeholder="Item name"
+      {/* Menu / Services */}
+      {activeTab === "menu" && (
+        <div className="rounded-xl border border-[#1f1f1f] bg-[#0a0a0a] p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-white">Menu / Services</h2>
+            <button
+              onClick={() => setMenu([...menu, { name: "", price: 0, category: "", description: "" }])}
+              className="flex items-center gap-1 rounded-lg border border-[#1f1f1f] px-3 py-1.5 text-xs text-[#aaa] transition-colors hover:border-[#2a2a2a] hover:text-white"
+            >
+              <Plus className="h-3 w-3" /> Add Item
+            </button>
+          </div>
+          <div className="space-y-3">
+            {menu.length === 0 && (
+              <p className="text-sm text-[#555]">No items yet. Add your first menu item.</p>
+            )}
+            {menu.map((item, i) => (
+              <div key={i} className="flex items-end gap-2 rounded-xl border border-[#1f1f1f] bg-[#050505] p-4">
+                <div className="flex-1">
+                  <label className="mb-1 block text-[11px] text-[#555]">Name</label>
+                  <input
+                    value={item.name}
+                    onChange={(e) => { const c = [...menu]; c[i] = { ...c[i], name: e.target.value }; setMenu(c) }}
+                    placeholder="Item name"
+                    className="h-9 w-full rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] px-3 text-sm text-white placeholder-[#444] focus:border-[#333] focus:outline-none"
+                  />
+                </div>
+                <div className="w-20">
+                  <label className="mb-1 block text-[11px] text-[#555]">Price (₹)</label>
+                  <input
+                    type="number"
+                    value={item.price}
+                    onChange={(e) => { const c = [...menu]; c[i] = { ...c[i], price: Number(e.target.value) }; setMenu(c) }}
+                    className="h-9 w-full rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] px-3 text-sm text-[#22c55e] focus:border-[#333] focus:outline-none"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="mb-1 block text-[11px] text-[#555]">Category</label>
+                  <input
+                    value={item.category || ""}
+                    onChange={(e) => { const c = [...menu]; c[i] = { ...c[i], category: e.target.value }; setMenu(c) }}
+                    placeholder="e.g. Main Course"
+                    className="h-9 w-full rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] px-3 text-sm text-white placeholder-[#444] focus:border-[#333] focus:outline-none"
+                  />
+                </div>
+                <button
+                  onClick={() => setMenu(menu.filter((_, idx) => idx !== i))}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-[#444] transition-colors hover:text-[#ef4444]"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 border-t border-[#1f1f1f] pt-4">
+            <button
+              onClick={() => saveField({ menu })}
+              disabled={saving}
+              className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition-colors duration-150 hover:bg-[#f0f0f0] disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Menu"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Business Hours */}
+      {activeTab === "hours" && (
+        <div className="rounded-xl border border-[#1f1f1f] bg-[#0a0a0a] p-6">
+          <div className="space-y-3">
+            {DAYS.map((day) => {
+              const h = hours[day] || { open: true, start: "09:00", end: "21:00" }
+              return (
+                <div key={day} className="flex items-center gap-4">
+                  <div className="w-28 text-sm font-medium text-white">{day}</div>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={h.open}
+                      onChange={(e) => setHours({ ...hours, [day]: { ...h, open: e.target.checked } })}
+                      className="accent-white"
+                    />
+                    <span className="text-sm text-[#aaa]">{h.open ? "Open" : "Closed"}</span>
+                  </label>
+                  {h.open && (
+                    <>
+                      <input
+                        type="time"
+                        className="h-9 w-32 rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] px-3 text-sm text-white focus:border-[#333] focus:outline-none"
+                        value={h.start}
+                        onChange={(e) => setHours({ ...hours, [day]: { ...h, start: e.target.value } })}
+                      />
+                      <span className="text-[#555]">to</span>
+                      <input
+                        type="time"
+                        className="h-9 w-32 rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] px-3 text-sm text-white focus:border-[#333] focus:outline-none"
+                        value={h.end}
+                        onChange={(e) => setHours({ ...hours, [day]: { ...h, end: e.target.value } })}
+                      />
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <div className="mt-4 border-t border-[#1f1f1f] pt-4">
+            <button
+              onClick={() => saveField({ hours })}
+              disabled={saving}
+              className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition-colors duration-150 hover:bg-[#f0f0f0] disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Hours"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* FAQs */}
+      {activeTab === "faqs" && (
+        <div className="rounded-xl border border-[#1f1f1f] bg-[#0a0a0a] p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-white">FAQs</h2>
+            <button
+              onClick={() => {
+                if (faqs.length >= 10) { toast.error("Maximum 10 FAQs allowed"); return }
+                setFaqs([...faqs, { question: "", answer: "" }])
+              }}
+              className="flex items-center gap-1 rounded-lg border border-[#1f1f1f] px-3 py-1.5 text-xs text-[#aaa] transition-colors hover:border-[#2a2a2a] hover:text-white"
+            >
+              <Plus className="h-3 w-3" /> Add FAQ
+            </button>
+          </div>
+          <div className="space-y-3">
+            {faqs.length === 0 && (
+              <p className="text-sm text-[#555]">No FAQs yet. Add common questions your customers ask.</p>
+            )}
+            {faqs.map((faq, i) => (
+              <div key={i} className="rounded-xl border border-[#1f1f1f] bg-[#050505] p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 space-y-2">
+                    <input
+                      value={faq.question}
+                      onChange={(e) => { const c = [...faqs]; c[i] = { ...c[i], question: e.target.value }; setFaqs(c) }}
+                      placeholder="Question"
+                      className="h-9 w-full rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] px-3 text-sm text-white placeholder-[#444] focus:border-[#333] focus:outline-none"
+                    />
+                    <textarea
+                      value={faq.answer}
+                      onChange={(e) => { const c = [...faqs]; c[i] = { ...c[i], answer: e.target.value }; setFaqs(c) }}
+                      placeholder="Answer"
+                      rows={2}
+                      className="w-full rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] px-3 py-2 text-sm text-white placeholder-[#444] focus:border-[#333] focus:outline-none"
                     />
                   </div>
-                  <div>
-                    <Label className="text-xs">Price (₹)</Label>
-                    <Input
-                      type="number"
-                      value={item.price}
-                      onChange={(e) => {
-                        const copy = [...menu]
-                        copy[i] = { ...copy[i], price: Number(e.target.value) }
-                        setMenu(copy)
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Category</Label>
-                    <Input
-                      value={item.category || ""}
-                      onChange={(e) => {
-                        const copy = [...menu]
-                        copy[i] = { ...copy[i], category: e.target.value }
-                        setMenu(copy)
-                      }}
-                      placeholder="e.g. Main Course"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Description</Label>
-                    <Input
-                      value={item.description || ""}
-                      onChange={(e) => {
-                        const copy = [...menu]
-                        copy[i] = { ...copy[i], description: e.target.value }
-                        setMenu(copy)
-                      }}
-                      placeholder="Optional"
-                    />
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => setMenu(menu.filter((_, idx) => idx !== i))}
+                  <button
+                    onClick={() => setFaqs(faqs.filter((_, idx) => idx !== i))}
+                    className="mt-1 text-[#444] transition-colors hover:text-[#ef4444]"
                   >
                     <Trash2 className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </div>
-              ))}
-              <Button onClick={() => saveField({ menu })} disabled={saving}>
-                {saving ? "Saving..." : "Save Menu"}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ── Tab 3: Business Hours ────────────────────── */}
-        <TabsContent value="hours">
-          <Card>
-            <CardHeader><CardTitle>Business Hours</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {DAYS.map((day) => {
-                const h = hours[day] || { open: true, start: "09:00", end: "21:00" }
-                return (
-                  <div key={day} className="flex items-center gap-4">
-                    <div className="w-28 text-sm font-medium">{day}</div>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={h.open}
-                        onChange={(e) =>
-                          setHours({ ...hours, [day]: { ...h, open: e.target.checked } })
-                        }
-                        className="accent-primary"
-                      />
-                      <span className="text-sm">{h.open ? "Open" : "Closed"}</span>
-                    </label>
-                    {h.open && (
-                      <>
-                        <Input
-                          type="time"
-                          className="w-32"
-                          value={h.start}
-                          onChange={(e) =>
-                            setHours({ ...hours, [day]: { ...h, start: e.target.value } })
-                          }
-                        />
-                        <span className="text-muted-foreground">to</span>
-                        <Input
-                          type="time"
-                          className="w-32"
-                          value={h.end}
-                          onChange={(e) =>
-                            setHours({ ...hours, [day]: { ...h, end: e.target.value } })
-                          }
-                        />
-                      </>
-                    )}
-                  </div>
-                )
-              })}
-              <Button onClick={() => saveField({ hours })} disabled={saving}>
-                {saving ? "Saving..." : "Save Hours"}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ── Tab 4: FAQs ──────────────────────────────── */}
-        <TabsContent value="faqs">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>FAQs</CardTitle>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  if (faqs.length >= 10) {
-                    toast.error("Maximum 10 FAQs allowed")
-                    return
-                  }
-                  setFaqs([...faqs, { question: "", answer: "" }])
-                }}
-              >
-                <Plus className="mr-1 h-4 w-4" /> Add FAQ
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {faqs.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  No FAQs yet. Add common questions your customers ask.
-                </p>
-              )}
-              {faqs.map((faq, i) => (
-                <div key={i} className="space-y-2 rounded-lg border p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 space-y-2">
-                      <Input
-                        value={faq.question}
-                        onChange={(e) => {
-                          const copy = [...faqs]
-                          copy[i] = { ...copy[i], question: e.target.value }
-                          setFaqs(copy)
-                        }}
-                        placeholder="Question"
-                      />
-                      <Textarea
-                        value={faq.answer}
-                        onChange={(e) => {
-                          const copy = [...faqs]
-                          copy[i] = { ...copy[i], answer: e.target.value }
-                          setFaqs(copy)
-                        }}
-                        placeholder="Answer"
-                        rows={2}
-                      />
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setFaqs(faqs.filter((_, idx) => idx !== i))}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              <p className="text-xs text-muted-foreground">{faqs.length}/10 FAQs</p>
-              <Button onClick={() => saveField({ faqs })} disabled={saving}>
-                {saving ? "Saving..." : "Save FAQs"}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-[#444]">{faqs.length}/10 FAQs</p>
+          <div className="mt-4 border-t border-[#1f1f1f] pt-4">
+            <button
+              onClick={() => saveField({ faqs })}
+              disabled={saving}
+              className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition-colors duration-150 hover:bg-[#f0f0f0] disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save FAQs"}
+            </button>
+          </div>
+        </div>
+      )}
+    </motion.div>
   )
 }

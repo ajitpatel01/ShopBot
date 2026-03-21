@@ -17,6 +17,9 @@ const {
   countShopsByOwner,
 } = require('../services/shopService');
 const { PLANS } = require('../config/plans');
+const { sendMessage } = require('../services/whatsapp');
+const { supabaseService } = require('../services/supabase');
+const { subDays } = require('date-fns');
 
 router.use(authenticateUser);
 
@@ -94,6 +97,62 @@ router.delete('/:id', async (req, res, next) => {
   try {
     const result = await deleteShop(req.params.id, req.user.id);
     res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/:id/broadcast', async (req, res, next) => {
+  try {
+    const shop = await getShopById(req.params.id);
+    if (!shop) {
+      return res.status(404).json({ error: 'Shop not found' });
+    }
+    if (shop.owner_id !== req.user.id) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const { message, type } = req.body;
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    if (message.length > 500) {
+      return res.status(400).json({ error: 'Message must be under 500 characters' });
+    }
+    if (!['all', 'recent', 'inactive'].includes(type)) {
+      return res.status(400).json({ error: 'type must be one of: all, recent, inactive' });
+    }
+
+    let query = supabaseService
+      .from('conversations')
+      .select('customer_phone, customer_name')
+      .eq('shop_id', shop.id);
+
+    if (type === 'recent') {
+      query = query.gt('last_message_at', subDays(new Date(), 14).toISOString());
+    } else if (type === 'inactive') {
+      query = query.lt('last_message_at', subDays(new Date(), 7).toISOString());
+    }
+
+    const { data: customers } = await query;
+    if (!customers || customers.length === 0) {
+      return res.json({ sent: 0, failed: 0 });
+    }
+
+    let sent = 0;
+    let failed = 0;
+
+    for (const customer of customers) {
+      const success = await sendMessage(customer.customer_phone, message);
+      if (success) {
+        sent++;
+      } else {
+        failed++;
+      }
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    res.json({ sent, failed });
   } catch (err) {
     next(err);
   }

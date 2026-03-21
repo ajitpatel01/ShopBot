@@ -3,11 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createBrowserClient } from "@/lib/supabase"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { MessageSquare } from "lucide-react"
+import { motion } from "framer-motion"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -51,68 +47,74 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-2">
-          <div className="flex items-center justify-center gap-2 text-3xl font-bold">
-            <MessageSquare className="h-8 w-8 text-primary" />
-            ShopBot
+    <div className="flex min-h-screen items-center justify-center bg-black px-4">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-sm"
+      >
+        <div className="rounded-xl border border-[#1f1f1f] bg-[#0a0a0a] p-8">
+          <div className="mb-6 text-center">
+            <div className="text-[28px] font-bold tracking-tight text-white">
+              💬 ShopBot
+            </div>
+            <p className="mt-1 text-[13px] text-[#555]">Owner dashboard</p>
           </div>
-          <CardDescription className="text-base">
-            Dashboard for shop owners
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+
           <form onSubmit={handleEmailLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
+            <div>
+              <input
                 type="email"
-                placeholder="you@example.com"
+                placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="h-11 w-full rounded-lg border border-[#1f1f1f] bg-[#111] px-3 text-sm text-white placeholder-[#444] transition-colors focus:border-[#ffffff40] focus:outline-none"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
+            <div>
+              <input
                 type="password"
-                placeholder="Your password"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="h-11 w-full rounded-lg border border-[#1f1f1f] bg-[#111] px-3 text-sm text-white placeholder-[#444] transition-colors focus:border-[#ffffff40] focus:outline-none"
               />
             </div>
+
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <p className="text-sm text-[#ef4444] animate-in fade-in duration-200">{error}</p>
             )}
-            <Button type="submit" className="w-full" disabled={loading}>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="h-11 w-full rounded-lg bg-white text-sm font-semibold text-black transition-colors duration-150 hover:bg-[#f0f0f0] disabled:opacity-50"
+            >
               {loading ? "Signing in..." : "Sign In"}
-            </Button>
+            </button>
           </form>
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t" />
+              <div className="w-full border-t border-[#1f1f1f]" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">or</span>
+              <span className="bg-[#0a0a0a] px-3 text-[#444]">or</span>
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            className="w-full"
+          <button
             onClick={handleGoogleLogin}
             disabled={googleLoading}
+            className="h-11 w-full rounded-lg border border-[#1f1f1f] bg-transparent text-sm font-medium text-white transition-colors duration-150 hover:border-[#2a2a2a] disabled:opacity-50"
           >
             {googleLoading ? "Redirecting..." : "Continue with Google"}
-          </Button>
-        </CardContent>
-      </Card>
+          </button>
+        </div>
+      </motion.div>
     </div>
   )
 }

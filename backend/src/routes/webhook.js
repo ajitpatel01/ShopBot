@@ -21,6 +21,9 @@ const { generateReply } = require('../services/groq');
 const { processIntent } = require('../services/intentProcessor');
 const { updateOrderStatus, updateBookingStatus } = require('../services/orderService');
 const { supabaseService } = require('../services/supabase');
+const { sendPaymentLinkToCustomer } = require('../services/paymentService');
+const { buildTrackingReply } = require('../services/orderTrackingService');
+const { recordOrderIntent, markAsConverted } = require('../services/abandonedOrderService');
 
 async function handleOwnerCommand(msg, shop) {
   try {
@@ -122,9 +125,92 @@ function registerMessageHandler(client) {
         return;
       }
 
+      // STEP 4B — Check for review response (1-5 single digit)
+      if (/^[1-5]$/.test(messageBody)) {
+        try {
+          const { data: existingConv } = await supabaseService
+            .from('conversations')
+            .select('id')
+            .eq('shop_id', shop.id)
+            .eq('customer_phone', customerPhone.replace('@c.us', ''))
+            .single();
+
+          if (existingConv) {
+            const { data: recentOrder } = await supabaseService
+              .from('orders')
+              .select('*')
+              .eq('shop_id', shop.id)
+              .eq('conversation_id', existingConv.id)
+              .eq('status', 'completed')
+              .gte('created_at', new Date(Date.now() - 30 * 60 * 1000).toISOString())
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (recentOrder) {
+              const rating = parseInt(messageBody);
+              const responses = {
+                5: "Thank you so much! 🌟 We're thrilled you loved it! See you again soon 😊",
+                4: "Thank you! 😊 We're glad you had a good experience! We'll keep improving 🙏",
+                3: "Thank you for the feedback 🙏 We'll work on doing better next time!",
+                2: "We're sorry you didn't have a great experience 😔 We'll do better. Thank you for telling us 🙏",
+                1: "We sincerely apologize 🙏 Your feedback has been noted. We'll make sure this doesn't happen again.",
+              };
+              await sendMessage(customerPhone, responses[rating]);
+
+              await supabaseService
+                .from('orders')
+                .update({ customer_note: (recentOrder.customer_note || '') + ' | RATING:' + rating })
+                .eq('id', recentOrder.id);
+
+              console.log('[Handler] Review rating ' + rating + ' saved for order ' + recentOrder.id);
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('[Handler] Review check error:', err.message);
+        }
+      }
+
       // STEP 5 — Upsert conversation
       const customerName = (msg._data && msg._data.notifyName) || null;
       const conversation = await upsertConversation(shop.id, customerPhone, customerName);
+
+      // STEP 5B — Payment query detection (before AI to save tokens)
+      const paymentKeywords = ['payment done', 'paid', 'maine pay kar diya', 'payment kiya', 'pay kar diya', 'payment ho gaya'];
+      const isPaymentQuery = paymentKeywords.some(function (kw) {
+        return messageBody.toLowerCase().includes(kw);
+      });
+      if (isPaymentQuery) {
+        const paymentReply = 'Thank you! 🙏 We\'ve noted your payment. Your order is being prepared! If you face any issue, we\'ll contact you shortly 😊';
+        await sendMessage(customerPhone, paymentReply);
+        await Promise.all([
+          saveMessage(shop.id, conversation.id, 'inbound', messageBody, 'faq'),
+          saveMessage(shop.id, conversation.id, 'outbound', paymentReply, 'faq'),
+        ]);
+        console.log('[Handler] Payment query handled for ' + customerPhone);
+        return;
+      }
+
+      // STEP 5C — Tracking query detection (before AI to save tokens)
+      const trackingKeywords = [
+        'track', 'tracking', 'where is my order', 'order status',
+        'kahan hai order', 'order kahan', 'kitna time',
+        'how long', 'order track', 'delivery status', 'order ready',
+      ];
+      const isTrackingQuery = trackingKeywords.some(function (kw) {
+        return messageBody.toLowerCase().includes(kw);
+      });
+      if (isTrackingQuery) {
+        const trackingReply = await buildTrackingReply(shop.id, customerPhone);
+        await sendMessage(customerPhone, trackingReply);
+        await Promise.all([
+          saveMessage(shop.id, conversation.id, 'inbound', messageBody, 'faq'),
+          saveMessage(shop.id, conversation.id, 'outbound', trackingReply, 'faq'),
+        ]);
+        console.log('[Handler] Tracking query handled for ' + customerPhone);
+        return;
+      }
 
       // STEP 6 — Fetch conversation history
       const history = await getConversationHistory(conversation.id, 10);
@@ -153,12 +239,37 @@ function registerMessageHandler(client) {
 
       // STEP 12 — Process intent asynchronously (fire-and-forget)
       processIntent(intent, messageBody, reply, shop, conversation, inboundMsg ? inboundMsg.id : null)
-        .then(result => {
+        .then(function (result) {
           if (result.action !== 'none') {
             console.log('[Handler] Intent action:', result.action);
           }
+
+          if (result.action === 'order_created' && result.orderId) {
+            markAsConverted(conversation.id).catch(function (err) {
+              console.error('[Handler] markAsConverted error:', err.message);
+            });
+
+            if (shop.plan !== 'starter') {
+              setTimeout(function () {
+                supabaseService
+                  .from('orders')
+                  .select('*')
+                  .eq('id', result.orderId)
+                  .single()
+                  .then(function (res) {
+                    if (res.data) {
+                      sendPaymentLinkToCustomer(res.data, shop, customerPhone, customerName)
+                        .catch(function (err) { console.error('[Payment] Failed:', err.message); });
+                    }
+                  });
+              }, 1000);
+            }
+          } else if (result.action === 'none' && intent === 'order') {
+            recordOrderIntent(shop.id, conversation.id, customerPhone, [])
+              .catch(function (err) { console.error('[Handler] recordOrderIntent error:', err.message); });
+          }
         })
-        .catch(err => console.error('[Handler] Intent processor error:', err.message));
+        .catch(function (err) { console.error('[Handler] Intent processor error:', err.message); });
 
       console.log('[Handler] Message processing complete for ' + customerPhone);
     } catch (err) {

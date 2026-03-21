@@ -1,22 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { motion } from "framer-motion"
 import { getShops, getBookings, updateBookingStatus, type Shop, type Booking } from "@/lib/api"
 import { ShopSelector } from "@/components/ShopSelector"
 import { StatusBadge } from "@/components/StatusBadge"
 import { LoadingSpinner } from "@/components/LoadingSpinner"
 import { EmptyState } from "@/components/EmptyState"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Calendar } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -70,7 +60,7 @@ export default function BookingsPage() {
 
   function loadBookings() {
     setLoading(true)
-    const params = filter !== "all" ? { status: filter } : {}
+    const params: Record<string, string> = filter !== "all" ? { status: filter } : {}
     getBookings(activeShopId, params)
       .then(({ bookings }) => setBookings(bookings))
       .catch(() => {})
@@ -88,7 +78,7 @@ export default function BookingsPage() {
     )
     try {
       await updateBookingStatus(bookingId, activeShopId, newStatus)
-      toast.success(`Booking ${newStatus}`)
+      toast.success(`Booking ${newStatus} — Customer notified via WhatsApp`)
     } catch (err) {
       setBookings(prev)
       toast.error(err instanceof Error ? err.message : "Failed to update status")
@@ -96,21 +86,33 @@ export default function BookingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-6"
+    >
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Bookings</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-white">Bookings</h1>
         <ShopSelector shops={shops} activeShopId={activeShopId} onSelect={setActiveShopId} />
       </div>
 
-      <Tabs value={filter} onValueChange={setFilter}>
-        <TabsList>
-          {STATUSES.map((s) => (
-            <TabsTrigger key={s} value={s} className="capitalize">
-              {s}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <div className="flex gap-1 border-b border-[#1f1f1f]">
+        {STATUSES.map((s) => (
+          <button
+            key={s}
+            onClick={() => setFilter(s)}
+            className={cn(
+              "border-b-2 px-4 py-2.5 text-sm font-medium capitalize transition-colors duration-150",
+              filter === s
+                ? "border-white text-white"
+                : "border-transparent text-[#555] hover:text-[#aaa]"
+            )}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
 
       {loading ? (
         <LoadingSpinner />
@@ -121,81 +123,70 @@ export default function BookingsPage() {
           icon={Calendar}
         />
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">
-              {bookings.length} booking{bookings.length !== 1 ? "s" : ""}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Service</TableHead>
-                  <TableHead>Date & Time</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Booked</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {bookings.map((booking) => {
-                  const past = booking.booking_datetime && isPast(booking.booking_datetime)
-                  return (
-                    <TableRow key={booking.id} className={cn(past && "opacity-50")}>
-                      <TableCell className="font-medium">
-                        {booking.customer_name || booking.customer_phone || "Customer"}
-                      </TableCell>
-                      <TableCell>{booking.service || "—"}</TableCell>
-                      <TableCell className={cn(!past && "font-medium text-green-700")}>
-                        {booking.booking_datetime
-                          ? formatBookingDate(booking.booking_datetime)
-                          : "—"}
-                      </TableCell>
-                      <TableCell><StatusBadge status={booking.status} /></TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {timeAgo(booking.created_at)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          {booking.status === "pending" && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="default"
-                                onClick={() => handleStatusChange(booking.id, "confirmed")}
-                              >
-                                Confirm
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleStatusChange(booking.id, "cancelled")}
-                              >
-                                Cancel
-                              </Button>
-                            </>
-                          )}
-                          {booking.status === "confirmed" && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
+        <div className="rounded-xl border border-[#1f1f1f] bg-[#0a0a0a]">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[#1f1f1f] bg-[#050505]">
+                <th className="px-6 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-[#555]">Customer</th>
+                <th className="px-6 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-[#555]">Service</th>
+                <th className="px-6 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-[#555]">Date & Time</th>
+                <th className="px-6 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-[#555]">Status</th>
+                <th className="px-6 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-[#555]">Booked</th>
+                <th className="px-6 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-[#555]">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bookings.map((booking) => {
+                const past = booking.booking_datetime && isPast(booking.booking_datetime)
+                return (
+                  <tr key={booking.id} className={cn(
+                    "border-b border-[#0f0f0f] transition-colors duration-100 last:border-0 hover:bg-[#0d0d0d]",
+                    past && "opacity-40"
+                  )}>
+                    <td className="px-6 py-3 font-medium text-white">
+                      {booking.customer_name || booking.customer_phone || "Customer"}
+                    </td>
+                    <td className="px-6 py-3 text-[#aaa]">{booking.service || "—"}</td>
+                    <td className={cn("px-6 py-3", !past ? "font-medium text-[#22c55e]" : "text-[#555]")}>
+                      {booking.booking_datetime ? formatBookingDate(booking.booking_datetime) : "—"}
+                    </td>
+                    <td className="px-6 py-3"><StatusBadge status={booking.status} /></td>
+                    <td className="px-6 py-3 text-[#444]">{timeAgo(booking.created_at)}</td>
+                    <td className="px-6 py-3">
+                      <div className="flex gap-2">
+                        {booking.status === "pending" && (
+                          <>
+                            <button
+                              onClick={() => handleStatusChange(booking.id, "confirmed")}
+                              className="rounded-lg border border-[#22c55e30] bg-[#22c55e15] px-3 py-1 text-[11px] font-medium text-[#22c55e] transition-colors hover:bg-[#22c55e25]"
+                            >
+                              Confirm
+                            </button>
+                            <button
                               onClick={() => handleStatusChange(booking.id, "cancelled")}
+                              className="rounded-lg border border-[#ef444430] bg-[#ef444415] px-3 py-1 text-[11px] font-medium text-[#ef4444] transition-colors hover:bg-[#ef444425]"
                             >
                               Cancel
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                            </button>
+                          </>
+                        )}
+                        {booking.status === "confirmed" && (
+                          <button
+                            onClick={() => handleStatusChange(booking.id, "cancelled")}
+                            className="rounded-lg border border-[#ef444430] bg-[#ef444415] px-3 py-1 text-[11px] font-medium text-[#ef4444] transition-colors hover:bg-[#ef444425]"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
-    </div>
+    </motion.div>
   )
 }

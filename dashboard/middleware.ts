@@ -13,14 +13,18 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: Record<string, unknown>) {
-          request.cookies.set({ name, value, ...options } as Parameters<typeof request.cookies.set>[0])
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          request.cookies.set({ name, value, ...options } as any)
           response = NextResponse.next({ request: { headers: request.headers } })
-          response.cookies.set({ name, value, ...options } as Parameters<typeof response.cookies.set>[0])
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          response.cookies.set({ name, value, ...options } as any)
         },
         remove(name: string, options: Record<string, unknown>) {
-          request.cookies.set({ name, value: "", ...options } as Parameters<typeof request.cookies.set>[0])
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          request.cookies.set({ name, value: "", ...options } as any)
           response = NextResponse.next({ request: { headers: request.headers } })
-          response.cookies.set({ name, value: "", ...options } as Parameters<typeof response.cookies.set>[0])
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          response.cookies.set({ name, value: "", ...options } as any)
         },
       },
     }

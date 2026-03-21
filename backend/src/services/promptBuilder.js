@@ -6,6 +6,7 @@
 
 const { format } = require('date-fns');
 const { toZonedTime } = require('date-fns-tz');
+const { getFestivalToday, getUpcomingFestival } = require('../config/festivals');
 
 const IST_TZ = 'Asia/Kolkata';
 
@@ -23,7 +24,22 @@ function buildSystemPrompt(shop) {
   const now = toZonedTime(new Date(), IST_TZ);
   const currentDay = DAY_NAMES[now.getDay()];
   const currentTime = format(now, 'h:mm a');
+  const hour = now.getHours();
   const hours = shop.hours || {};
+
+  let timeGreeting, timePeriod;
+  if (hour >= 5 && hour < 12) {
+    timeGreeting = 'Good morning'; timePeriod = 'morning';
+  } else if (hour >= 12 && hour < 17) {
+    timeGreeting = 'Good afternoon'; timePeriod = 'afternoon';
+  } else if (hour >= 17 && hour < 21) {
+    timeGreeting = 'Good evening'; timePeriod = 'evening';
+  } else {
+    timeGreeting = 'Hello'; timePeriod = 'night';
+  }
+
+  const todayFestival = getFestivalToday();
+  const upcomingFestival = getUpcomingFestival(2);
 
   const todayKey = currentDay.toLowerCase();
   const todayHours = hours[todayKey];
@@ -142,6 +158,51 @@ function buildSystemPrompt(shop) {
     'Respond in the same language the customer uses — Hindi, English, or Hinglish.\nAuto-detect from their message.'
   );
 
+  // ── GREETING STYLE ──
+  sections.push(
+    'GREETING STYLE:\n' +
+    'When a customer first messages or says hi/hello/namaste:\n' +
+    `- Start with '${timeGreeting}! ${todayFestival ? todayFestival.emoji + ' ' + todayFestival.greeting + '! ' : ''}Welcome to ${shop.name}!'\n` +
+    `- If it's a festival today (${todayFestival ? todayFestival.name : 'none'}): wish them '${todayFestival ? todayFestival.greeting + ' ' + todayFestival.emoji : ''}' naturally in the greeting\n` +
+    `- If a festival is coming in 1-2 days: mention it warmly ('By the way, wishing you a Happy ${upcomingFestival ? upcomingFestival.name : ''} in advance! ${upcomingFestival ? upcomingFestival.emoji : ''}')\n` +
+    '- Use the customer\'s name if known'
+  );
+
+  // ── PERSONALITY & EMOJI GUIDE ──
+  let personalitySection = 'PERSONALITY & EMOJI GUIDE:\n';
+  if (shop.bot_tone === 'friendly') {
+    personalitySection +=
+      '- Use 1-2 relevant emojis per reply (not on every sentence, just naturally)\n' +
+      '- Good emojis for food: 😋🍽️🥘🫕🍛 — use when describing food items\n' +
+      '- Good emojis for greetings: 😊🙏☀️🌙👋\n' +
+      '- Good emojis for confirmations: ✅👍🎉\n' +
+      '- Acknowledgements: \'Sure ji!\', \'Of course!\', \'Great choice!\', \'Bilkul!\'\n' +
+      '- Conversation closers: \'Anything else I can help with? 😊\', \'Kuch aur chahiye? 🙏\'\n' +
+      '- If customer says thanks: \'My pleasure! 😊 Come again!\', \'Anytime! 🙏\'';
+  } else if (shop.bot_tone === 'casual') {
+    personalitySection +=
+      '- Use 2-3 emojis naturally per reply\n' +
+      '- Be playful and fun — like texting a friend\n' +
+      '- Use phrases like \'Yaar\', \'Bhai\', \'Chill karo\', \'Done deal!\'\n' +
+      '- Good emojis: 😄🔥✨💯👌🤙';
+  } else {
+    personalitySection +=
+      '- No emojis — formal and professional\n' +
+      '- Use \'Sir/Ma\'am\', complete sentences\n' +
+      '- Polite but efficient — no slang or casual phrases';
+  }
+  sections.push(personalitySection);
+
+  // ── CONVERSATION FLOW ──
+  sections.push(
+    'CONVERSATION FLOW:\n' +
+    '- After answering a question about the menu, always offer: \'Would you like to place an order? 😊\'\n' +
+    '- After placing an order, say: \'Your order is confirmed! 🎉 We\'ll have it ready for you.\'\n' +
+    '- After a booking, say: \'Booking confirmed! ✅ See you on [date] at [time] 😊\'\n' +
+    '- If customer seems upset: acknowledge first (\'I completely understand, I\'m sorry for the inconvenience 🙏\'), then resolve\n' +
+    '- Never leave a conversation without asking if there\'s anything else'
+  );
+
   // ── HARD RULES ──
   sections.push(
     'CRITICAL RULES — follow these always:\n' +
@@ -150,7 +211,11 @@ function buildSystemPrompt(shop) {
     '3. Never confirm an order unless the customer explicitly says they want to place it.\n' +
     '4. If you cannot answer confidently, say: \'Let me check with the team and get back to you shortly.\'\n' +
     '5. Keep replies under 3 sentences unless giving a menu or list.\n' +
-    '6. Never reveal you are an AI unless directly asked.'
+    '6. Never reveal you are an AI unless directly asked.\n' +
+    '7. Always end replies with a helpful closing when the conversation feels complete.\n' +
+    '8. Use the customer\'s name naturally when you know it — not on every message, just occasionally.\n' +
+    '9. On festival days, weave the festival greeting naturally into the first reply.\n' +
+    '10. Keep emojis relevant and restrained — quality over quantity.'
   );
 
   return sections.join('\n\n');

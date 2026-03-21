@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { motion } from "framer-motion"
 import {
   getShops,
   getConversations,
@@ -16,15 +17,6 @@ import { StatusBadge } from "@/components/StatusBadge"
 import { ShopSelector } from "@/components/ShopSelector"
 import { LoadingSpinner } from "@/components/LoadingSpinner"
 import { EmptyState } from "@/components/EmptyState"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { MessageSquare, ShoppingBag, Calendar, AlertCircle, Inbox } from "lucide-react"
 
 function timeAgo(dateStr: string) {
@@ -63,7 +55,6 @@ export default function OverviewPage() {
       getOrders(activeShopId, { limit: "5" }).catch(() => ({ orders: [], count: 0 })),
       getOrders(activeShopId, { status: "pending" }).catch(() => ({ orders: [], count: 0 })),
       getConversations(activeShopId, { limit: "5" }).catch(() => ({ conversations: [], count: 0 })),
-      // Reuse bookings count from API — we just need the pending count
       import("@/lib/api").then(m => m.getBookings(activeShopId, { status: "pending" })).catch(() => ({ bookings: [], count: 0 })),
     ]).then(([statsData, ordersData, pendingOrdersData, convsData, bookingsData]) => {
       setStats(statsData)
@@ -77,125 +68,111 @@ export default function OverviewPage() {
   if (loading) return <LoadingSpinner />
 
   return (
-    <div className="space-y-8">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-8"
+    >
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Overview</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-white">Overview</h1>
         <ShopSelector shops={shops} activeShopId={activeShopId} onSelect={setActiveShopId} />
       </div>
 
-      {/* Stat cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="Messages (30d)"
-          value={stats.totalMessages}
-          icon={MessageSquare}
-          color="blue"
-        />
-        <StatCard
-          title="Pending Orders"
-          value={pendingOrders}
-          icon={ShoppingBag}
-          color="amber"
-          change={pendingOrders > 0 ? "Needs action" : undefined}
-        />
-        <StatCard
-          title="Pending Bookings"
-          value={pendingBookings}
-          icon={Calendar}
-          color="green"
-        />
-        <StatCard
-          title="Needs Attention"
-          value={stats.escalations}
-          icon={AlertCircle}
-          color="red"
-          change={stats.escalations > 0 ? "Escalations" : undefined}
-        />
+        <StatCard title="Messages (30d)" value={stats.totalMessages} icon={MessageSquare} color="blue" />
+        <StatCard title="Pending Orders" value={pendingOrders} icon={ShoppingBag} color="amber" change={pendingOrders > 0 ? "Needs action" : undefined} />
+        <StatCard title="Pending Bookings" value={pendingBookings} icon={Calendar} color="green" />
+        <StatCard title="Needs Attention" value={stats.escalations} icon={AlertCircle} color="red" change={stats.escalations > 0 ? "Escalations" : undefined} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Recent Orders */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Recent Orders</CardTitle>
-            <Link href="/dashboard/orders" className="text-sm text-primary hover:underline">
-              View all
+        <div className="rounded-xl border border-[#1f1f1f] bg-[#0a0a0a]">
+          <div className="flex items-center justify-between border-b border-[#1f1f1f] px-6 py-4">
+            <h2 className="text-sm font-medium text-white">Recent Orders</h2>
+            <Link href="/dashboard/orders" className="text-xs text-[#555] transition-colors hover:text-[#aaa]">
+              View all →
             </Link>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div className="p-0">
             {orders.length === 0 ? (
-              <EmptyState title="No orders yet" description="Orders from WhatsApp will appear here" icon={ShoppingBag} />
+              <div className="p-6">
+                <EmptyState title="No orders yet" description="Orders from WhatsApp will appear here" icon={ShoppingBag} />
+              </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Items</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Time</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#1f1f1f] bg-[#050505]">
+                    <th className="px-6 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-[#555]">Customer</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-[#555]">Items</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-[#555]">Total</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-[#555]">Status</th>
+                    <th className="px-6 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-[#555]">Time</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {orders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">
+                    <tr key={order.id} className="border-b border-[#0f0f0f] transition-colors duration-100 last:border-0 hover:bg-[#0d0d0d]">
+                      <td className="px-6 py-3 font-medium text-white">
                         {order.customer_name || order.customer_phone || "Customer"}
-                      </TableCell>
-                      <TableCell className="max-w-[120px] truncate text-sm text-muted-foreground">
+                      </td>
+                      <td className="max-w-[120px] truncate px-6 py-3 text-[#666]">
                         {order.items.map(i => i.name).join(", ") || "—"}
-                      </TableCell>
-                      <TableCell>₹{order.total || 0}</TableCell>
-                      <TableCell><StatusBadge status={order.status} /></TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{timeAgo(order.created_at)}</TableCell>
-                    </TableRow>
+                      </td>
+                      <td className="px-6 py-3 text-white">₹{order.total || 0}</td>
+                      <td className="px-6 py-3"><StatusBadge status={order.status} /></td>
+                      <td className="px-6 py-3 text-[#444]">{timeAgo(order.created_at)}</td>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Recent Conversations */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Recent Conversations</CardTitle>
-            <Link href="/dashboard/conversations" className="text-sm text-primary hover:underline">
-              View all
+        <div className="rounded-xl border border-[#1f1f1f] bg-[#0a0a0a]">
+          <div className="flex items-center justify-between border-b border-[#1f1f1f] px-6 py-4">
+            <h2 className="text-sm font-medium text-white">Recent Conversations</h2>
+            <Link href="/dashboard/conversations" className="text-xs text-[#555] transition-colors hover:text-[#aaa]">
+              View all →
             </Link>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div>
             {conversations.length === 0 ? (
-              <EmptyState title="No conversations yet" description="Your bot is ready to receive messages" icon={Inbox} />
+              <div className="p-6">
+                <EmptyState title="No conversations yet" description="Your bot is ready to receive messages" icon={Inbox} />
+              </div>
             ) : (
-              <div className="space-y-3">
+              <div>
                 {conversations.map((conv) => (
                   <Link
                     key={conv.id}
                     href={`/dashboard/conversations/${conv.id}`}
-                    className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent"
+                    className="flex items-center gap-3 border-b border-[#0f0f0f] px-6 py-4 transition-colors duration-100 last:border-0 hover:bg-[#0d0d0d]"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1a1a1a] text-[13px] font-medium text-white">
                       {(conv.customer_name || conv.customer_phone || "?")[0].toUpperCase()}
                     </div>
                     <div className="flex-1 overflow-hidden">
-                      <p className="text-sm font-medium">
+                      <p className="text-sm font-medium text-white">
                         {conv.customer_name || conv.customer_phone}
                       </p>
-                      <p className="truncate text-xs text-muted-foreground">
+                      <p className="truncate text-xs text-[#555]">
                         {conv.latest_message || "No messages"}
                       </p>
                     </div>
-                    <span className="shrink-0 text-xs text-muted-foreground">
+                    <span className="shrink-0 text-xs text-[#444]">
                       {timeAgo(conv.last_message_at || conv.created_at)}
                     </span>
                   </Link>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

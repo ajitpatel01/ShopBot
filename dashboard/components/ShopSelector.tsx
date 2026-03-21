@@ -20,12 +20,12 @@ export function ShopSelector({ shops, activeShopId, onSelect }: ShopSelectorProp
 
   return (
     <Select value={activeShopId} onValueChange={onSelect}>
-      <SelectTrigger className="w-[220px]">
+      <SelectTrigger className="w-[200px] border-[#1f1f1f] bg-[#0a0a0a] text-sm text-white">
         <SelectValue placeholder="Select shop" />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="border-[#1f1f1f] bg-[#111]">
         {shops.map((shop) => (
-          <SelectItem key={shop.id} value={shop.id}>
+          <SelectItem key={shop.id} value={shop.id} className="text-[#aaa] focus:bg-[#1a1a1a] focus:text-white">
             {shop.name}
           </SelectItem>
         ))}

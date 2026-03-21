@@ -7,6 +7,7 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const QRCode = require('qrcode');
 
 const { webhookLimiter, apiLimiter } = require('./src/middleware/rateLimit');
 const { errorHandler } = require('./src/middleware/errorHandler');
@@ -48,6 +49,29 @@ app.use((req, res, next) => {
     }
   });
   next();
+});
+
+app.get('/qr', async (req, res) => {
+  const secret = req.query.secret;
+  if (secret !== process.env.ADMIN_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const { getLatestQR, isConnected: connected } = require('./src/services/whatsapp');
+  if (connected()) {
+    return res.send('<h1 style="color:green">✅ WhatsApp is connected!</h1>');
+  }
+  const qr = getLatestQR();
+  if (!qr) {
+    return res.send('<h1>QR not ready yet. Wait 30 seconds and refresh.</h1>');
+  }
+  const qrImageUrl = await QRCode.toDataURL(qr);
+  res.send(
+    '<html><body style="background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0">' +
+    '<h2 style="color:white;font-family:sans-serif">Scan with WhatsApp</h2>' +
+    '<img src="' + qrImageUrl + '" style="width:300px;height:300px"/>' +
+    '<p style="color:#aaa;font-family:sans-serif">Refresh if expired</p>' +
+    '</body></html>'
+  );
 });
 
 app.get('/health', (req, res) => {

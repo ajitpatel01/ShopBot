@@ -18,8 +18,10 @@ const client = new Client({
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 3;
 const BASE_DELAY_MS = 5000;
+let latestQR = null;
 
 client.on('qr', (qr) => {
+  latestQR = qr;
   console.log('[WhatsApp] Scan this QR code to link your device:');
   qrcode.generate(qr, { small: true });
 });
@@ -84,4 +86,4 @@ function onMessage(handler) {
   client.on('message', handler);
 }
 
-module.exports = { initializeClient, sendMessage, isConnected, onMessage, client };
+module.exports = { initializeClient, sendMessage, isConnected, onMessage, client, getLatestQR: () => latestQR };

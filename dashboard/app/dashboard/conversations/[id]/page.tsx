@@ -37,6 +37,7 @@ export default function ConversationDetailPage() {
 
   const [messages, setMessages] = useState<Message[]>([])
   const [shopId, setShopId] = useState("")
+  const [shopsReady, setShopsReady] = useState(false)
   const [loading, setLoading] = useState(true)
   const [needsAttention, setNeedsAttention] = useState(false)
   const [conversation, setConversation] = useState<Conversation | null>(null)
@@ -45,13 +46,20 @@ export default function ConversationDetailPage() {
   const [savingNote, setSavingNote] = useState(false)
 
   useEffect(() => {
-    getShops().then(({ shops }) => {
-      if (shops.length > 0) setShopId(shops[0].id)
-    })
+    getShops()
+      .then(({ shops }) => {
+        if (shops.length > 0) setShopId(shops[0].id)
+      })
+      .catch(() => {})
+      .finally(() => setShopsReady(true))
   }, [])
 
   useEffect(() => {
-    if (!shopId || !conversationId) return
+    if (!shopsReady) return
+    if (!shopId || !conversationId) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
 
     Promise.all([
@@ -68,7 +76,7 @@ export default function ConversationDetailPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [shopId, conversationId])
+  }, [shopsReady, shopId, conversationId])
 
   useEffect(() => {
     if (!conversationId) return
@@ -111,6 +119,24 @@ export default function ConversationDetailPage() {
   }
 
   if (loading) return <LoadingSpinner />
+
+  if (shopsReady && !shopId) {
+    return (
+      <div className="space-y-4 p-2">
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard/conversations")}
+          className="flex items-center gap-2 text-sm text-[#666] hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
+        <p className="text-[#888]">
+          No shop found. Add a shop in Settings with your bot&apos;s WhatsApp number, then open this conversation again.
+        </p>
+      </div>
+    )
+  }
 
   const customerName = conversation?.customer_name || conversation?.customer_phone || "Customer"
   const customerPhone = conversation?.customer_phone || ""

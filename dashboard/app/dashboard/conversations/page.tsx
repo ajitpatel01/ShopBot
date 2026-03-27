@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback, useRef } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { getShops, getConversations, deleteConversation, resolveConversation, type Shop, type Conversation } from "@/lib/api"
 import { createBrowserClient } from "@/lib/supabase"
 import { ShopSelector } from "@/components/ShopSelector"
+import { ShopFetchError } from "@/components/ShopFetchError"
 import { LoadingSpinner } from "@/components/LoadingSpinner"
 import { EmptyState } from "@/components/EmptyState"
 import { MessageSquare, Search, Trash2, CheckCircle } from "lucide-react"
@@ -44,18 +45,31 @@ export default function ConversationsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [filter, setFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
+  const [shopsReady, setShopsReady] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null)
+  const [shopsError, setShopsError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
-    getShops().then(({ shops }) => {
-      setShops(shops)
-      if (shops.length > 0) setActiveShopId(shops[0].id)
-    }).catch(() => setLoading(false))
+    getShops()
+      .then(({ shops }) => {
+        setShopsError(null)
+        setShops(shops)
+        if (shops.length > 0) setActiveShopId(shops[0].id)
+      })
+      .catch((err: unknown) => {
+        setShops([])
+        setShopsError(err instanceof Error ? err.message : "Request failed")
+      })
+      .finally(() => setShopsReady(true))
   }, [])
 
   const fetchConversations = useCallback(() => {
-    if (!activeShopId) return
+    if (!shopsReady) return
+    if (!activeShopId) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     const params: Record<string, string> = {}
     if (debouncedSearch) params.search = debouncedSearch
@@ -66,10 +80,10 @@ export default function ConversationsPage() {
       .then(({ conversations }) => setConversations(conversations))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [activeShopId, debouncedSearch, filter])
+  }, [shopsReady, activeShopId, debouncedSearch, filter])
 
   useEffect(() => {
-    fetchConversations()
+    queueMicrotask(() => fetchConversations())
   }, [fetchConversations])
 
   useEffect(() => {
@@ -119,7 +133,16 @@ export default function ConversationsPage() {
     }
   }
 
-  if (loading && conversations.length === 0) return <LoadingSpinner />
+  if (loading && conversations.length === 0 && !shopsError) return <LoadingSpinner />
+
+  if (shops.length === 0 && shopsError) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight text-white">Conversations</h1>
+        <ShopFetchError message={shopsError} />
+      </div>
+    )
+  }
 
   return (
     <motion.div

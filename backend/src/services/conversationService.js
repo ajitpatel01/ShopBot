@@ -56,7 +56,7 @@ async function upsertConversation(shopId, customerPhone, customerName) {
 async function getConversationHistory(conversationId, limit = 10) {
   const { data, error } = await supabaseService
     .from('messages')
-    .select('direction, content')
+    .select('direction, body')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -65,7 +65,7 @@ async function getConversationHistory(conversationId, limit = 10) {
 
   return data.reverse().map((msg) => ({
     role: msg.direction === 'inbound' ? 'user' : 'assistant',
-    content: msg.content,
+    content: msg.body,
   }));
 }
 
@@ -76,9 +76,8 @@ async function saveMessage(shopId, conversationId, direction, content, intent, n
       shop_id: shopId,
       conversation_id: conversationId,
       direction,
-      content,
+      body: content,
       intent,
-      needs_owner_reply: needsOwnerReply,
     })
     .select()
     .single();
@@ -134,7 +133,7 @@ async function getConversationsByShop(shopId, options = {}) {
 
   const { data: latestMessages } = await supabaseService
     .from('messages')
-    .select('conversation_id, content, created_at')
+    .select('conversation_id, body, created_at')
     .in('conversation_id', conversationIds)
     .order('created_at', { ascending: false });
 
@@ -142,7 +141,7 @@ async function getConversationsByShop(shopId, options = {}) {
   if (latestMessages) {
     for (const msg of latestMessages) {
       if (!latestByConv[msg.conversation_id]) {
-        latestByConv[msg.conversation_id] = msg.content;
+        latestByConv[msg.conversation_id] = msg.body;
       }
     }
   }

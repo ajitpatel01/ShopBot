@@ -24,6 +24,7 @@ async function getShopByWhatsappNumber(whatsappNumber) {
     .select('*')
     .eq('whatsapp_number', whatsappNumber)
     .eq('is_active', true)
+    .limit(1)
     .single();
 
   if (error || !data) return null;

@@ -17,6 +17,7 @@ import { StatusBadge } from "@/components/StatusBadge"
 import { ShopSelector } from "@/components/ShopSelector"
 import { LoadingSpinner } from "@/components/LoadingSpinner"
 import { EmptyState } from "@/components/EmptyState"
+import { ShopFetchError } from "@/components/ShopFetchError"
 import { MessageSquare, ShoppingBag, Calendar, AlertCircle, Inbox } from "lucide-react"
 
 function timeAgo(dateStr: string) {
@@ -33,23 +34,36 @@ function timeAgo(dateStr: string) {
 export default function OverviewPage() {
   const [shops, setShops] = useState<Shop[]>([])
   const [activeShopId, setActiveShopId] = useState("")
+  const [shopsReady, setShopsReady] = useState(false)
   const [stats, setStats] = useState({ totalMessages: 0, inboundMessages: 0, intentBreakdown: {} as Record<string, number>, escalations: 0 })
   const [orders, setOrders] = useState<Order[]>([])
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [pendingOrders, setPendingOrders] = useState(0)
   const [pendingBookings, setPendingBookings] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [shopsError, setShopsError] = useState<string | null>(null)
 
   useEffect(() => {
-    getShops().then(({ shops }) => {
-      setShops(shops)
-      if (shops.length > 0) setActiveShopId(shops[0].id)
-    }).catch(() => setLoading(false))
+    getShops()
+      .then(({ shops }) => {
+        setShopsError(null)
+        setShops(shops)
+        if (shops.length > 0) setActiveShopId(shops[0].id)
+      })
+      .catch((err: unknown) => {
+        setShops([])
+        setShopsError(err instanceof Error ? err.message : "Request failed")
+      })
+      .finally(() => setShopsReady(true))
   }, [])
 
   useEffect(() => {
-    if (!activeShopId) return
-    setLoading(true)
+    if (!shopsReady) return
+    if (!activeShopId) {
+      queueMicrotask(() => setLoading(false))
+      return
+    }
+    queueMicrotask(() => setLoading(true))
     Promise.all([
       getStats(activeShopId).catch(() => ({ totalMessages: 0, inboundMessages: 0, intentBreakdown: {}, escalations: 0 })),
       getOrders(activeShopId, { limit: "5" }).catch(() => ({ orders: [], count: 0 })),
@@ -63,9 +77,38 @@ export default function OverviewPage() {
       setConversations(convsData.conversations)
       setPendingBookings(bookingsData.count)
     }).finally(() => setLoading(false))
-  }, [activeShopId])
+  }, [activeShopId, shopsReady])
 
   if (loading) return <LoadingSpinner />
+
+  if (shops.length === 0 && shopsError) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight text-white">Overview</h1>
+        <ShopFetchError message={shopsError} />
+        <p className="text-sm text-[#666]">If the API is running, try signing out and back in so your session token is sent with requests.</p>
+      </div>
+    )
+  }
+
+  if (shops.length === 0) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight text-white">Overview</h1>
+        <EmptyState
+          title="No shop yet"
+          description="Create a shop in Settings using the same WhatsApp number you connected to the bot. The bot only replies when that number matches your shop."
+          icon={Inbox}
+        />
+        <Link
+          href="/dashboard/settings"
+          className="inline-flex rounded-lg border border-[#2a2a2a] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#111]"
+        >
+          Go to Settings
+        </Link>
+      </div>
+    )
+  }
 
   return (
     <motion.div

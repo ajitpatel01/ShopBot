@@ -41,19 +41,27 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [filter, setFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
+  const [shopsReady, setShopsReady] = useState(false)
 
   useEffect(() => {
-    getShops().then(({ shops }) => {
-      setShops(shops)
-      if (shops.length > 0) setActiveShopId(shops[0].id)
-    }).catch(() => setLoading(false))
+    getShops()
+      .then(({ shops }) => {
+        setShops(shops)
+        if (shops.length > 0) setActiveShopId(shops[0].id)
+      })
+      .catch(() => {})
+      .finally(() => setShopsReady(true))
   }, [])
 
   useEffect(() => {
-    if (!activeShopId) return
+    if (!shopsReady) return
+    if (!activeShopId) {
+      setLoading(false)
+      return
+    }
     loadOrders()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeShopId, filter])
+  }, [activeShopId, filter, shopsReady])
 
   function loadOrders() {
     setLoading(true)

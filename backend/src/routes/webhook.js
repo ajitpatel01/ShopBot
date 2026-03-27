@@ -112,7 +112,18 @@ function registerMessageHandler(client) {
       // STEP 3 — Look up shop
       const shop = await getShopByWhatsappNumber(botNumber);
       if (!shop) {
-        console.log('[Handler] No shop found for number: ' + botNumber);
+        console.warn(
+          '[Handler] No shop for bot number ' + botNumber +
+            ' — In the dashboard (Settings), set the shop WhatsApp number to exactly this value so inbound messages route correctly.'
+        );
+        await sendMessage(
+          customerPhone,
+          'ShopBot is not linked to this WhatsApp number yet. The owner should open the dashboard → Settings and save the business number as ' +
+            botNumber +
+            ' (same number used to scan the QR code).'
+        ).catch(function (err) {
+          console.error('[Handler] Could not send setup hint:', err.message);
+        });
         return;
       }
 

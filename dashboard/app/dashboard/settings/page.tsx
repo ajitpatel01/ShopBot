@@ -9,7 +9,8 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-const TABS = ["basic", "menu", "hours", "faqs"] as const
+
+type SettingsTab = "basic" | "menu" | "hours" | "faqs"
 
 type HoursMap = Record<string, { open: boolean; start: string; end: string }>
 
@@ -23,7 +24,7 @@ export default function SettingsPage() {
   const [shop, setShop] = useState<Shop | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<typeof TABS[number]>("basic")
+  const [activeTab, setActiveTab] = useState<SettingsTab>("basic")
 
   const [name, setName] = useState("")
   const [type, setType] = useState("other")

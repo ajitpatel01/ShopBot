@@ -21,7 +21,7 @@ async function recordOrderIntent(shopId, conversationId, customerPhone, itemsDis
     .from('order_intents')
     .select('id')
     .eq('conversation_id', conversationId)
-    .eq('converted', false)
+    .eq('status', 'pending')
     .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
     .limit(1)
     .single();
@@ -29,7 +29,7 @@ async function recordOrderIntent(shopId, conversationId, customerPhone, itemsDis
   if (existing) {
     await supabaseService
       .from('order_intents')
-      .update({ items_discussed: itemsDiscussed, created_at: new Date().toISOString() })
+      .update({ intent_data: itemsDiscussed, created_at: new Date().toISOString() })
       .eq('id', existing.id);
     return existing;
   }
@@ -40,7 +40,8 @@ async function recordOrderIntent(shopId, conversationId, customerPhone, itemsDis
       shop_id: shopId,
       conversation_id: conversationId,
       customer_phone: cleanPhone,
-      items_discussed: itemsDiscussed,
+      intent_data: itemsDiscussed,
+      status: 'pending',
     })
     .select()
     .single();
@@ -56,9 +57,9 @@ async function recordOrderIntent(shopId, conversationId, customerPhone, itemsDis
 async function markAsConverted(conversationId) {
   const { error } = await supabaseService
     .from('order_intents')
-    .update({ converted: true })
+    .update({ status: 'converted' })
     .eq('conversation_id', conversationId)
-    .eq('converted', false);
+    .eq('status', 'pending');
 
   if (error) {
     console.error('[Abandoned] Failed to mark converted:', error.message);
@@ -86,7 +87,7 @@ async function sendFollowUpMessage(intent, shop) {
 
   await supabaseService
     .from('order_intents')
-    .update({ follow_up_sent: true, follow_up_sent_at: new Date().toISOString() })
+    .update({ follow_up_sent: true })
     .eq('id', intent.id);
 
   console.log('[Abandoned] Follow-up sent to ' + intent.customer_phone);
@@ -102,7 +103,7 @@ function scheduleAbandonedOrderChecks() {
         .from('order_intents')
         .select('*, shops(id, name, is_active)')
         .eq('follow_up_sent', false)
-        .eq('converted', false)
+        .eq('status', 'pending')
         .lt('created_at', twoHoursAgo)
         .gt('created_at', twentyFourHoursAgo)
         .limit(100);

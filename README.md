@@ -139,13 +139,13 @@ Shop owners can share a unique referral code. When a referred business subscribe
 |---|---|
 | `shops` | Business profiles — name, type, menu, hours, FAQs, plan, subscription status, slug |
 | `conversations` | One row per unique customer per shop, tracks message count and resolution state |
-| `messages` | Every inbound and outbound message with intent classification |
+| `messages` | Every inbound and outbound message (`body`, `direction`, `intent`, etc.) |
 | `orders` | Captured orders with JSONB items, total, status, payment status, customer notes |
 | `bookings` | Appointments with datetime, service, customer name, status |
 | `digests` | Daily summary records per shop (messages, orders, bookings, revenue) |
 | `referral_codes` | Unique referral codes per shop, usage tracking |
 | `referral_redemptions` | Tracks who referred whom, reward status |
-| `order_intents` | Abandoned order tracking — incomplete orders awaiting follow-up |
+| `order_intents` | Abandoned order tracking (`intent_data`, `status`, `follow_up_at`, `follow_up_sent`, etc.) |
 | `auth.users` | Owner accounts — managed by Supabase Auth |
 
 Row Level Security is enabled on all tables. Owners can only access their own shop data.
@@ -282,12 +282,14 @@ cp .env.local.example .env.local
 
 ### 5. Run locally
 
+**Important:** `NEXT_PUBLIC_BACKEND_URL` in `dashboard/.env.local` must match the URL the backend actually listens on (same host and port as `PORT` in `backend/.env`, default **3001**). If they differ, the dashboard will load but show no shops until the API is reachable.
+
 ```bash
 # Terminal 1 — Backend
-cd backend && node index.js
+cd backend && npm run dev   # or: node index.js
 # Scan the QR code with WhatsApp when it appears
 # Expected startup logs:
-#   ShopBot backend running on port 3001
+#   ShopBot backend running on port <PORT>
 #   [App] WhatsApp client initializing...
 #   [App] Daily digest scheduled for 07:50 IST
 #   [App] Proactive messages scheduled
@@ -335,8 +337,18 @@ Visit `http://localhost:3000/shop/your-shop-slug` (no login required)
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Same Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same Supabase anon key |
-| `NEXT_PUBLIC_BACKEND_URL` | Backend API URL (default: `http://localhost:3001`) |
+| `NEXT_PUBLIC_BACKEND_URL` | Backend API URL — **must match** `PORT` (e.g. `http://localhost:3001` or `http://localhost:3003`) |
 | `NEXT_PUBLIC_APP_URL` | Dashboard URL (default: `http://localhost:3000`) |
+
+---
+
+## 🔧 Troubleshooting (local)
+
+| Symptom | What to check |
+|--------|----------------|
+| Dashboard opens but **no shops / empty data** | Backend running; `NEXT_PUBLIC_BACKEND_URL` port = `PORT` in backend `.env`; browser devtools **Network** tab for failed `/shops` requests. |
+| **401** on API calls | Sign out and sign in again so the Supabase session token is attached to requests. |
+| WhatsApp **@lid** (linked device) send issues | Outbound replies resolve the chat via `getChats()` when the id contains `@lid`, with `@c.us` fallback. |
 
 ---
 

@@ -40,6 +40,7 @@ export default function CustomerProfilePage() {
   const conversationId = params.id as string
 
   const [shopId, setShopId] = useState("")
+  const [shopsReady, setShopsReady] = useState(false)
   const [profile, setProfile] = useState<CustomerProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [note, setNote] = useState("")
@@ -47,13 +48,20 @@ export default function CustomerProfilePage() {
   const [tags, setTags] = useState<string[]>([])
 
   useEffect(() => {
-    getShops().then(({ shops }) => {
-      if (shops.length > 0) setShopId(shops[0].id)
-    })
+    getShops()
+      .then(({ shops }) => {
+        if (shops.length > 0) setShopId(shops[0].id)
+      })
+      .catch(() => {})
+      .finally(() => setShopsReady(true))
   }, [])
 
   useEffect(() => {
-    if (!shopId || !conversationId) return
+    if (!shopsReady) return
+    if (!shopId || !conversationId) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     getCustomerProfile(conversationId, shopId)
       .then((data) => {
@@ -62,7 +70,7 @@ export default function CustomerProfilePage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [shopId, conversationId])
+  }, [shopsReady, shopId, conversationId])
 
   useEffect(() => {
     if (!conversationId) return
@@ -94,6 +102,25 @@ export default function CustomerProfilePage() {
   }
 
   if (loading) return <LoadingSpinner />
+
+  if (shopsReady && !shopId) {
+    return (
+      <div className="space-y-4 p-2">
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard/conversations")}
+          className="flex items-center gap-2 text-sm text-[#666] hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
+        <p className="text-[#888]">
+          No shop found. Add a shop in Settings with your bot&apos;s WhatsApp number first.
+        </p>
+      </div>
+    )
+  }
+
   if (!profile) return <p className="p-6 text-[#555]">Profile not found</p>
 
   const { conversation: conv, orders, bookings, messageStats, totalSpend } = profile

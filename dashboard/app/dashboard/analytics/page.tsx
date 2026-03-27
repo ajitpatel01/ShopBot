@@ -17,6 +17,7 @@ import {
   type CustomerStats,
 } from "@/lib/api"
 import { ShopSelector } from "@/components/ShopSelector"
+import { ShopFetchError } from "@/components/ShopFetchError"
 import { LoadingSpinner } from "@/components/LoadingSpinner"
 import { StatCard } from "@/components/StatCard"
 import { DollarSign, ShoppingBag, Users, TrendingUp } from "lucide-react"
@@ -79,19 +80,30 @@ export default function AnalyticsPage() {
   const [peakHours, setPeakHours] = useState<PeakHourEntry[]>([])
   const [topItems, setTopItems] = useState<TopItem[]>([])
   const [customerStats, setCustomerStats] = useState<CustomerStats | null>(null)
+  const [shopsReady, setShopsReady] = useState(false)
+  const [shopsError, setShopsError] = useState<string | null>(null)
 
   useEffect(() => {
     getShops()
       .then(({ shops }) => {
+        setShopsError(null)
         setShops(shops)
         if (shops.length > 0) setActiveShopId(shops[0].id)
       })
-      .catch(() => setLoading(false))
+      .catch((err: unknown) => {
+        setShops([])
+        setShopsError(err instanceof Error ? err.message : "Request failed")
+      })
+      .finally(() => setShopsReady(true))
   }, [])
 
   useEffect(() => {
-    if (!activeShopId) return
-    setLoading(true)
+    if (!shopsReady) return
+    if (!activeShopId) {
+      queueMicrotask(() => setLoading(false))
+      return
+    }
+    queueMicrotask(() => setLoading(true))
 
     const now = new Date()
     const from = new Date(now.getTime() - rangeDays * 24 * 60 * 60 * 1000).toISOString()
@@ -110,7 +122,7 @@ export default function AnalyticsPage() {
       setTopItems(itemsData.topItems)
       setCustomerStats(custData as CustomerStats)
     }).finally(() => setLoading(false))
-  }, [activeShopId, rangeDays])
+  }, [activeShopId, rangeDays, shopsReady])
 
   const totalRevenue = useMemo(() => revenueData.reduce((sum, d) => sum + d.revenue, 0), [revenueData])
   const totalOrders = useMemo(() => revenueData.reduce((sum, d) => sum + d.order_count, 0), [revenueData])
@@ -131,6 +143,15 @@ export default function AnalyticsPage() {
   const topItemsChart = useMemo(() => topItems.slice(0, 8).reverse(), [topItems])
 
   if (loading) return <LoadingSpinner />
+
+  if (shops.length === 0 && shopsError) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight text-white">Analytics</h1>
+        <ShopFetchError message={shopsError} />
+      </div>
+    )
+  }
 
   return (
     <motion.div

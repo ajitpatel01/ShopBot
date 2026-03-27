@@ -65,15 +65,33 @@ function initializeClient() {
 
 async function sendMessage(to, message) {
   try {
-    if (!to || typeof to !== 'string') return false;
-    if (!message || typeof message !== 'string') return false;
+    let chatId = to;
 
-    const formattedNumber = to.endsWith('@c.us') ? to : `${to}@c.us`;
-    await client.sendMessage(formattedNumber, message);
-    console.log('[WhatsApp] Sent to ' + to + ' ✅');
+    // Handle @lid format — look up actual chat
+    if (to.includes('@lid')) {
+      try {
+        const chats = await client.getChats();
+        const match = chats.find(
+          (c) => c.id._serialized === to || c.id.user === to.split('@')[0]
+        );
+        if (match) {
+          await match.sendMessage(message);
+          console.log('[WhatsApp] Sent reply via chat lookup to', to);
+          return true;
+        }
+      } catch (lidErr) {
+        console.warn('[WhatsApp] @lid lookup failed, trying @c.us fallback');
+      }
+      // fallback: swap @lid for @c.us
+      chatId = to.replace('@lid', '@c.us');
+    }
+
+    const chat = await client.getChatById(chatId);
+    await chat.sendMessage(message);
+    console.log('[WhatsApp] Sent reply to', chatId);
     return true;
   } catch (err) {
-    console.error('[WhatsApp] Failed to send to ' + to + ':', err.message);
+    console.error('[WhatsApp] Failed to send to', to, ':', err.message);
     return false;
   }
 }

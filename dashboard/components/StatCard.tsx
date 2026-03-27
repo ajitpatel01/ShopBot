@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import type { LucideIcon } from "lucide-react"
 
 interface StatCardProps {
@@ -24,28 +23,7 @@ const accentMap: Record<string, string> = {
 
 export function StatCard({ title, value, icon: Icon, color = "blue", change, prefix, suffix }: StatCardProps) {
   const numValue = typeof value === "string" ? parseInt(value, 10) || 0 : value
-  const [displayValue, setDisplayValue] = useState(0)
-
-  useEffect(() => {
-    if (!numValue || numValue === 0) {
-      setDisplayValue(0)
-      return
-    }
-    const duration = 1000
-    const steps = 40
-    const increment = numValue / steps
-    let current = 0
-    const timer = setInterval(() => {
-      current += increment
-      if (current >= numValue) {
-        setDisplayValue(numValue)
-        clearInterval(timer)
-      } else {
-        setDisplayValue(Math.floor(current))
-      }
-    }, duration / steps)
-    return () => clearInterval(timer)
-  }, [numValue])
+  const displayValue = numValue
 
   const hasAccent = (color === "amber" || color === "red") && numValue > 0
   const colorClass = hasAccent ? accentMap[color] : (color === "green" || color === "purple" ? accentMap[color] : "text-white")

@@ -51,17 +51,34 @@ async function generateReply(systemPrompt, conversationHistory, newMessage) {
       { role: 'user', content: newMessage },
     ];
 
+    // Inject domain guard as final system reminder
+    messages.splice(messages.length - 1, 0, {
+      role: 'system',
+      content: 'REMINDER: If the next user message is completely ' +
+        'unrelated to this shop\'s business domain, start your ' +
+        'response with [OFFTOPIC] before giving a polite redirect. ' +
+        'Stay strictly within the shop\'s domain.',
+    });
+
     const [response, intent] = await Promise.all([
       groq.chat.completions.create({
         model: MODEL,
         max_tokens: 500,
-        temperature: 0.7,
+        temperature: 0.3,
         messages,
       }),
       detectIntent(newMessage),
     ]);
 
-    const reply = response.choices[0].message.content || "I'm having trouble right now. Please try again shortly.";
+    let reply = response.choices[0].message.content || "I'm having trouble right now. Please try again shortly.";
+
+    // Domain enforcement — if model signals off-topic, use safe redirect
+    if (reply.trim().toUpperCase().startsWith('OFFTOPIC') ||
+      reply.trim().toUpperCase().startsWith('[OFFTOPIC]')) {
+      reply = "I'm this shop's dedicated assistant, so I can only " +
+        "help with our products and services! 😊 " +
+        "Is there anything I can help you with today?";
+    }
     console.log('[Groq] Generated reply, intent: ' + intent);
     return { reply, intent };
   } catch (err) {

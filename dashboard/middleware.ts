@@ -37,6 +37,14 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/auth")
   const isDashboardRoute = request.nextUrl.pathname.startsWith("/dashboard")
 
+  // Allow anonymous (guest) users through — same as signed-in users with email
+  if (user && (user.email || user.is_anonymous)) {
+    if (isAuthRoute) {
+      return NextResponse.redirect(new URL("/dashboard", request.url))
+    }
+    return response
+  }
+
   if (isDashboardRoute && !user) {
     return NextResponse.redirect(new URL("/login", request.url))
   }

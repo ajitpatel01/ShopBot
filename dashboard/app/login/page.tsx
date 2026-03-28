@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createBrowserClient } from "@/lib/supabase"
 import { motion } from "framer-motion"
+import type { User } from "@supabase/supabase-js"
 
 function isNetworkAuthError(err: unknown): boolean {
   if (err instanceof TypeError) return true
@@ -12,6 +13,46 @@ function isNetworkAuthError(err: unknown): boolean {
     return m.includes("failed to fetch") || m.includes("fetch")
   }
   return false
+}
+
+/** Supabase default is persistSession: true via createBrowserClient (@supabase/ssr). */
+async function syncUserProfile(supabase: ReturnType<typeof createBrowserClient>, user: User) {
+  const isGuest = typeof window !== "undefined" && localStorage.getItem("is_guest") === "true"
+  const meta = (user.user_metadata || {}) as Record<string, unknown>
+  const fullName = (meta.full_name as string) || (meta.name as string) || null
+  const avatarUrl = (meta.avatar_url as string) || (meta.picture as string) || null
+
+  const { data: existing } = await supabase.from("profiles").select("id").eq("id", user.id).maybeSingle()
+
+  if (!existing) {
+    const { error } = await supabase.from("profiles").insert({
+      id: user.id,
+      email: user.email,
+      full_name: fullName,
+      avatar_url: avatarUrl,
+      is_guest: isGuest,
+      last_login_at: new Date().toISOString(),
+      login_count: 1,
+    })
+    if (error) console.error("[Login] profile insert:", error.message)
+    return
+  }
+
+  const { error: upErr } = await supabase
+    .from("profiles")
+    .update({
+      email: user.email,
+      full_name: fullName,
+      avatar_url: avatarUrl,
+      is_guest: isGuest,
+    })
+    .eq("id", user.id)
+  if (upErr) {
+    console.error("[Login] profile update:", upErr.message)
+    return
+  }
+  const { error: rpcErr } = await supabase.rpc("increment_login_count", { user_id: user.id })
+  if (rpcErr) console.error("[Login] increment_login_count:", rpcErr.message)
 }
 
 export default function LoginPage() {
@@ -24,6 +65,24 @@ export default function LoginPage() {
   const [successMessage, setSuccessMessage] = useState("")
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [guestLoading, setGuestLoading] = useState(false)
+  const [rememberMe, setRememberMe] = useState(true)
+
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("saved_email") : null
+    if (saved) setEmail(saved)
+  }, [])
+
+  function applyRememberMeFlags() {
+    if (typeof window === "undefined") return
+    if (rememberMe) {
+      sessionStorage.removeItem("session_only")
+      if (email.trim()) localStorage.setItem("saved_email", email.trim())
+    } else {
+      sessionStorage.setItem("session_only", "true")
+      localStorage.removeItem("saved_email")
+    }
+  }
 
   function switchMode(next: "signin" | "signup") {
     setMode(next)
@@ -45,25 +104,31 @@ export default function LoginPage() {
           setLoading(false)
           return
         }
+        localStorage.removeItem("is_guest")
+        applyRememberMeFlags()
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
         })
         if (signUpError) {
           setError(signUpError.message)
-        } else if (data.session) {
+        } else if (data.session && data.user) {
+          await syncUserProfile(supabase, data.user)
           router.push("/dashboard")
         } else {
           setSuccessMessage("Check your email to confirm your account")
         }
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        localStorage.removeItem("is_guest")
+        applyRememberMeFlags()
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
         if (signInError) {
           setError(signInError.message)
-        } else {
+        } else if (data.user) {
+          await syncUserProfile(supabase, data.user)
           router.push("/dashboard")
         }
       }
@@ -82,6 +147,14 @@ export default function LoginPage() {
     setGoogleLoading(true)
     setError("")
     try {
+      localStorage.removeItem("is_guest")
+      if (rememberMe) {
+        sessionStorage.removeItem("session_only")
+        if (email.trim()) localStorage.setItem("saved_email", email.trim())
+      } else {
+        sessionStorage.setItem("session_only", "true")
+        localStorage.removeItem("saved_email")
+      }
       const supabase = createBrowserClient()
       await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -92,6 +165,27 @@ export default function LoginPage() {
     } catch {
       setError("Failed to start Google sign-in")
       setGoogleLoading(false)
+    }
+  }
+
+  const handleGuestLogin = async () => {
+    setGuestLoading(true)
+    setError("")
+    try {
+      const supabase = createBrowserClient()
+      const { data, error } = await supabase.auth.signInAnonymously()
+      if (error) {
+        setError(error.message)
+        return
+      }
+      if (data?.session) {
+        localStorage.setItem("is_guest", "true")
+        window.location.href = "/dashboard"
+      }
+    } catch {
+      setError("Guest login failed. Please try again.")
+    } finally {
+      setGuestLoading(false)
     }
   }
 
@@ -146,6 +240,16 @@ export default function LoginPage() {
                 />
               </div>
             )}
+
+            <label className="flex cursor-pointer items-center gap-2 text-[13px] text-[#888]">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 rounded border-[#333] bg-[#111] text-white focus:ring-white/20"
+              />
+              Remember me
+            </label>
 
             {error && (
               <p className="text-sm text-[#ef4444] animate-in fade-in duration-200">
@@ -215,6 +319,15 @@ export default function LoginPage() {
             className="h-11 w-full rounded-lg border border-[#1f1f1f] bg-transparent text-sm font-medium text-white transition-colors duration-150 hover:border-[#2a2a2a] disabled:opacity-50"
           >
             {googleLoading ? "Redirecting..." : "Continue with Google"}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGuestLogin}
+            disabled={guestLoading}
+            className="mt-3 h-11 w-full rounded-lg border border-[#2a2a2a] bg-[#111] text-sm font-medium text-[#ccc] transition-colors duration-150 hover:border-[#3a3a3a] hover:text-white disabled:opacity-50"
+          >
+            {guestLoading ? "Continuing..." : "Continue as Guest"}
           </button>
         </div>
       </motion.div>

@@ -12,6 +12,8 @@
 
 **Repository:** [github.com/ajitpatel01/ShopBot](https://github.com/ajitpatel01/ShopBot)
 
+**Live dashboard (production):** [shop-gq05gay41-ajitpatel01s-projects.vercel.app](https://shop-gq05gay41-ajitpatel01s-projects.vercel.app)
+
 ---
 
 ## 📚 Documentation
@@ -21,6 +23,7 @@
 | This README | Setup, env vars, architecture, workflows |
 | [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) | Production deploy checklist (Railway, Vercel, Supabase, Razorpay) |
 | [dashboard/README.md](dashboard/README.md) | Dashboard app: scripts and local dev |
+| **Production dashboard** | [https://shop-gq05gay41-ajitpatel01s-projects.vercel.app](https://shop-gq05gay41-ajitpatel01s-projects.vercel.app) (Vercel) |
 
 ---
 
@@ -314,7 +317,8 @@ cd dashboard && npm run dev
 
 ### 6. Open the dashboard
 
-Navigate to [http://localhost:3000](http://localhost:3000)
+- **Production:** [https://shop-gq05gay41-ajitpatel01s-projects.vercel.app](https://shop-gq05gay41-ajitpatel01s-projects.vercel.app)
+- **Local dev:** [http://localhost:3000](http://localhost:3000)
 
 ### 7. Test public shop page
 
@@ -381,6 +385,8 @@ Visit `http://localhost:3000/shop/your-shop-slug` (no login required)
 2. Set root directory to `/dashboard`
 3. Add all `NEXT_PUBLIC_*` environment variables
 4. Deploy — Vercel auto-detects Next.js
+
+**Current production URL:** [https://shop-gq05gay41-ajitpatel01s-projects.vercel.app](https://shop-gq05gay41-ajitpatel01s-projects.vercel.app)
 
 ### Razorpay Setup
 

@@ -15,6 +15,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+**Production:** [https://shop-gq05gay41-ajitpatel01s-projects.vercel.app](https://shop-gq05gay41-ajitpatel01s-projects.vercel.app)
+
 ## Scripts
 
 | Command | Description |

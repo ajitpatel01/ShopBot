@@ -1,5 +1,7 @@
 # ShopBot Launch Checklist
 
+Main project documentation: [README.md](README.md).
+
 ## Infrastructure
 - [ ] Backend running on Railway (deploy from GitHub)
 - [ ] Dashboard deployed on Vercel (connect GitHub repo)

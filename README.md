@@ -10,6 +10,18 @@
 
 > **Turn every WhatsApp message into a business opportunity — 24/7, fully automated, zero technical setup.**
 
+**Repository:** [github.com/ajitpatel01/ShopBot](https://github.com/ajitpatel01/ShopBot)
+
+---
+
+## 📚 Documentation
+
+| Doc | Description |
+|-----|-------------|
+| This README | Setup, env vars, architecture, workflows |
+| [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) | Production deploy checklist (Railway, Vercel, Supabase, Razorpay) |
+| [dashboard/README.md](dashboard/README.md) | Dashboard app: scripts and local dev |
+
 ---
 
 ## 🚀 What is ShopBot?
@@ -276,8 +288,9 @@ cp .env.example .env
 ```bash
 cd ../dashboard
 npm install
-cp .env.local.example .env.local
-# Fill in Supabase URL, anon key, and backend URL
+# Create dashboard/.env.local (not committed to git) with:
+#   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
+#   NEXT_PUBLIC_BACKEND_URL (must match backend PORT), NEXT_PUBLIC_APP_URL
 ```
 
 ### 5. Run locally
